@@ -7,11 +7,14 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
+    icon: path.join(__dirname, "..", "build", "icon.ico"),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
     },
   });
+
+  mainWindow.setMenuBarVisibility(false);
 
   mainWindow.loadFile(path.join(__dirname, "..", "electron-dist", "index.html"));
 
