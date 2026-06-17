@@ -229,37 +229,39 @@ function Dashboard({ vehicles, maintenances }: FleetState) {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Frota</CardTitle>
-          <CardDescription>Resumo rápido dos veículos</CardDescription>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Frota</CardTitle>
+          <CardDescription className="text-xs">Resumo rápido dos veículos</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {vehicles.map((v) => {
               const ms = maintenances.filter((m) => m.vehicleId === v.id);
               const gasto = ms.reduce((s, m) => s + m.valor, 0);
               return (
-                <div key={v.id} className="rounded-lg border bg-card overflow-hidden">
-                  <div className="aspect-video bg-muted relative">
+                <div key={v.id} className="rounded-lg border bg-card p-2 flex gap-3 items-center">
+                  <div className="shrink-0 w-16 h-16 rounded-md bg-muted relative overflow-hidden">
                     {v.imagem ? (
                       <img src={v.imagem} alt={v.nome} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full grid place-items-center text-muted-foreground">
-                        <Car className="size-10" />
+                        <Car className="size-6" />
                       </div>
                     )}
-                    <Badge className="absolute top-2 left-2 bg-background/90 text-foreground border">
-                      {v.placa}
-                    </Badge>
                   </div>
-                  <div className="p-3 space-y-1">
-                    <p className="font-medium text-sm leading-tight">{v.nome}</p>
-                    <p className="text-xs text-muted-foreground">{v.modelo} · {v.ano}</p>
-                    <div className="flex justify-between pt-2 text-xs">
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <Gauge className="size-3.5" /> {v.kmAtual.toLocaleString("pt-BR")} km
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-medium text-sm leading-tight truncate">{v.nome}</p>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] font-mono px-1 py-0 h-4 mt-0.5">
+                      {v.placa || "—"}
+                    </Badge>
+                    <p className="text-[11px] text-muted-foreground truncate mt-0.5">{v.modelo} · {v.ano}</p>
+                    <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Gauge className="size-3" /> {v.kmAtual.toLocaleString("pt-BR")} km
                       </span>
-                      <span className="font-medium">{formatBRL(gasto)}</span>
+                      <span className="text-foreground font-medium">{formatBRL(gasto)}</span>
                     </div>
                   </div>
                 </div>
