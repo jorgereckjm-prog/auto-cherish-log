@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { toast } from "sonner";
 import {
   Car,
@@ -317,7 +317,7 @@ function VehiclesTab({ vehicles, saveVehicle, deleteVehicle, maintenances }: Fle
         {vehicles.map((v) => {
           const ms = maintenances.filter((m) => m.vehicleId === v.id);
           return (
-            <Card key={v.id} className="overflow-hidden pt-0">
+            <div key={v.id} className="rounded-xl border bg-card overflow-hidden flex flex-col">
               <div className="aspect-video bg-muted relative">
                 {v.imagem ? (
                   <img src={v.imagem} alt={v.nome} className="w-full h-full object-cover" />
@@ -330,7 +330,7 @@ function VehiclesTab({ vehicles, saveVehicle, deleteVehicle, maintenances }: Fle
                   {v.placa || "SEM PLACA"}
                 </Badge>
               </div>
-              <CardContent className="space-y-3">
+              <div className="p-4 space-y-3 flex-1 flex flex-col">
                 <div>
                   <p className="font-semibold">{v.nome}</p>
                   <p className="text-sm text-muted-foreground">{v.modelo} · {v.ano}</p>
@@ -341,7 +341,7 @@ function VehiclesTab({ vehicles, saveVehicle, deleteVehicle, maintenances }: Fle
                   </span>
                   <span className="text-muted-foreground">{ms.length} manut.</span>
                 </div>
-                <div className="flex gap-2 pt-1">
+                <div className="flex gap-2 pt-1 mt-auto">
                   <Button variant="outline" size="sm" className="flex-1 gap-1" onClick={() => openEdit(v)}>
                     <Pencil className="size-3.5" /> Editar
                   </Button>
@@ -372,8 +372,8 @@ function VehiclesTab({ vehicles, saveVehicle, deleteVehicle, maintenances }: Fle
                     </AlertDialogContent>
                   </AlertDialog>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           );
         })}
       </div>
@@ -406,8 +406,7 @@ function VehicleDialog({
   const [form, setForm] = useState<Vehicle | null>(vehicle);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // sync when opening
-  useMemo(() => setForm(vehicle), [vehicle]);
+  useEffect(() => setForm(vehicle), [vehicle]);
 
   if (!form) return null;
 
@@ -700,7 +699,7 @@ function MaintenanceDialog({
   onSave: (m: Maintenance) => void;
 }) {
   const [form, setForm] = useState<Maintenance | null>(maintenance);
-  useMemo(() => setForm(maintenance), [maintenance]);
+  useEffect(() => setForm(maintenance), [maintenance]);
 
   if (!form) return null;
 
