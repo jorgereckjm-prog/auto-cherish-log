@@ -72,6 +72,7 @@ import {
   type Vehicle,
   type Maintenance,
 } from "@/lib/fleet-store";
+import logoAsset from "@/assets/patrimonial-telecom-logo.png.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -87,6 +88,13 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const fleet = useFleet();
+  const [tab, setTab] = useState<string>("dashboard");
+  const [maintFilterVehicle, setMaintFilterVehicle] = useState<string>("all");
+
+  function goToVehicleMaintenance(vehicleId: string) {
+    setMaintFilterVehicle(vehicleId);
+    setTab("maintenance");
+  }
 
   if (!fleet.hydrated) {
     return <div className="min-h-screen bg-background" />;
@@ -96,18 +104,20 @@ function Index() {
     <div className="min-h-screen bg-muted/30">
       <header className="border-b bg-background sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
-          <div className="size-10 rounded-lg bg-primary text-primary-foreground grid place-items-center">
-            <Car className="size-5" />
-          </div>
+          <img
+            src={logoAsset.url}
+            alt="Patrimonial Telecom"
+            className="size-12 rounded-lg object-contain bg-black p-1"
+          />
           <div>
-            <h1 className="text-lg font-bold tracking-tight">FrotaPro</h1>
+            <h1 className="text-lg font-bold tracking-tight">Patrimonial Telecom</h1>
             <p className="text-xs text-muted-foreground">Controle de manutenção de frotas</p>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        <Tabs defaultValue="dashboard" className="space-y-6">
+        <Tabs value={tab} onValueChange={setTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 max-w-md">
             <TabsTrigger value="dashboard" className="gap-2">
               <LayoutDashboard className="size-4" /> Dashboard
@@ -121,13 +131,17 @@ function Index() {
           </TabsList>
 
           <TabsContent value="dashboard">
-            <Dashboard {...fleet} />
+            <Dashboard {...fleet} onVehicleClick={goToVehicleMaintenance} />
           </TabsContent>
           <TabsContent value="vehicles">
-            <VehiclesTab {...fleet} />
+            <VehiclesTab {...fleet} onVehicleClick={goToVehicleMaintenance} />
           </TabsContent>
           <TabsContent value="maintenance">
-            <MaintenanceTab {...fleet} />
+            <MaintenanceTab
+              {...fleet}
+              filterVehicle={maintFilterVehicle}
+              setFilterVehicle={setMaintFilterVehicle}
+            />
           </TabsContent>
         </Tabs>
       </main>
@@ -137,7 +151,7 @@ function Index() {
 
 type FleetState = ReturnType<typeof useFleet>;
 
-function Dashboard({ vehicles, maintenances }: FleetState) {
+function Dashboard({ vehicles, maintenances, onVehicleClick }: FleetState & { onVehicleClick: (id: string) => void }) {
   const totalGasto = maintenances.reduce((s, m) => s + m.valor, 0);
   const totalManut = maintenances.length;
   const gastoMes = useMemo(() => {
@@ -239,10 +253,16 @@ function Dashboard({ vehicles, maintenances }: FleetState) {
               const ms = maintenances.filter((m) => m.vehicleId === v.id);
               const gasto = ms.reduce((s, m) => s + m.valor, 0);
               return (
-                <div key={v.id} className="rounded-lg border bg-card p-2 flex gap-3 items-center">
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => onVehicleClick(v.id)}
+                  className="text-left rounded-lg border bg-card p-2 flex gap-3 items-center hover:border-primary hover:shadow-sm transition cursor-pointer"
+                  title="Ver manutenções deste veículo"
+                >
                   <div className="shrink-0 w-16 h-16 rounded-md bg-muted relative overflow-hidden">
                     {v.imagem ? (
-                      <img src={v.imagem} alt={v.nome} className="w-full h-full object-cover" />
+                      <img src={v.imagem} alt={v.nome} className="w-full h-full object-contain" />
                     ) : (
                       <div className="w-full h-full grid place-items-center text-muted-foreground">
                         <Car className="size-6" />
@@ -264,7 +284,7 @@ function Dashboard({ vehicles, maintenances }: FleetState) {
                       <span className="text-foreground font-medium">{formatBRL(gasto)}</span>
                     </div>
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
