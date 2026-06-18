@@ -557,10 +557,12 @@ function MaintenanceTab({
   const [editing, setEditing] = useState<Maintenance | null>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [filterMonth, setFilterMonth] = useState<string>("all");
 
   const filtered = useMemo(() => {
     let list = [...maintenances].sort((a, b) => b.data.localeCompare(a.data));
     if (filterVehicle !== "all") list = list.filter((m) => m.vehicleId === filterVehicle);
+    if (filterMonth !== "all") list = list.filter((m) => m.data.slice(0, 7) === filterMonth);
     if (query.trim()) {
       const q = query.toLowerCase();
       list = list.filter(
@@ -571,7 +573,50 @@ function MaintenanceTab({
       );
     }
     return list;
-  }, [maintenances, filterVehicle, query]);
+  }, [maintenances, filterVehicle, filterMonth, query]);
+
+  const availableMonths = useMemo(() => {
+    const set = new Set(maintenances.map((m) => m.data.slice(0, 7)));
+    return Array.from(set).sort((a, b) => b.localeCompare(a));
+  }, [maintenances]);
+
+  function exportCSV() {
+    if (filtered.length === 0) {
+      toast.error("Nenhuma manutenção para exportar");
+      return;
+    }
+    const header = ["Data", "Veiculo", "Placa", "Tipo", "Descricao", "Oficina", "KM", "Valor"];
+    const rows = filtered.map((m) => {
+      const v = vehicles.find((x) => x.id === m.vehicleId);
+      return [
+        formatDate(m.data),
+        v?.nome ?? "",
+        v?.placa ?? "",
+        m.tipo,
+        m.descricao,
+        m.oficina ?? "",
+        String(m.km),
+        m.valor.toFixed(2).replace(".", ","),
+      ];
+    });
+    const total = filtered.reduce((s, m) => s + m.valor, 0);
+    rows.push(["", "", "", "", "", "", "TOTAL", total.toFixed(2).replace(".", ",")]);
+    const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
+    const csv = [header, ...rows].map((r) => r.map(escape).join(";")).join("\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const vehicleLabel =
+      filterVehicle === "all"
+        ? "geral"
+        : (vehicles.find((v) => v.id === filterVehicle)?.placa || "veiculo").replace(/\s+/g, "_");
+    const monthLabel = filterMonth === "all" ? "todos" : filterMonth;
+    a.href = url;
+    a.download = `manutencoes_${vehicleLabel}_${monthLabel}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Relatório exportado");
+  }
 
   function openNew() {
     setEditing({
@@ -599,13 +644,18 @@ function MaintenanceTab({
           <h2 className="text-xl font-semibold">Histórico de manutenções</h2>
           <p className="text-sm text-muted-foreground">{maintenances.length} registro(s) no total</p>
         </div>
-        <Button onClick={openNew} className="gap-2" disabled={vehicles.length === 0}>
-          <Plus className="size-4" /> Nova manutenção
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportCSV} className="gap-2">
+            <Download className="size-4" /> Exportar relatório
+          </Button>
+          <Button onClick={openNew} className="gap-2" disabled={vehicles.length === 0}>
+            <Plus className="size-4" /> Nova manutenção
+          </Button>
+        </div>
       </div>
 
       <Card>
-        <CardContent className="p-4 flex flex-col sm:flex-row gap-3">
+        <CardContent className="p-4 flex flex-col sm:flex-row gap-3 flex-wrap">
           <div className="relative flex-1">
             <Search className="size-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
             <Input
@@ -626,6 +676,26 @@ function MaintenanceTab({
                   {v.nome} · {v.placa}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterMonth} onValueChange={setFilterMonth}>
+            <SelectTrigger className="sm:w-48">
+              <SelectValue placeholder="Mês" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os meses</SelectItem>
+              {availableMonths.map((m) => {
+                const [y, mo] = m.split("-");
+                const label = new Date(Number(y), Number(mo) - 1, 1).toLocaleDateString("pt-BR", {
+                  month: "long",
+                  year: "numeric",
+                });
+                return (
+                  <SelectItem key={m} value={m}>
+                    {label}
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
         </CardContent>
