@@ -336,47 +336,53 @@ function VehiclesTab({ vehicles, saveVehicle, deleteVehicle, maintenances, onVeh
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {vehicles.map((v) => {
           const ms = maintenances.filter((m) => m.vehicleId === v.id);
+          const gasto = ms.reduce((s, m) => s + m.valor, 0);
           return (
-            <div key={v.id} className="rounded-xl border bg-card overflow-hidden flex flex-col">
+            <div key={v.id} className="rounded-xl border bg-card overflow-hidden flex">
               <button
                 type="button"
                 onClick={() => onVehicleClick(v.id)}
                 title="Ver histórico de manutenções"
-                className="h-32 bg-muted relative w-full block hover:opacity-90 transition cursor-pointer"
+                className="w-32 h-32 shrink-0 bg-muted relative hover:opacity-90 transition cursor-pointer"
               >
                 {v.imagem ? (
                   <img src={v.imagem} alt={v.nome} className="w-full h-full object-contain" />
                 ) : (
                   <div className="w-full h-full grid place-items-center text-muted-foreground">
-                    <Car className="size-10" />
+                    <Car className="size-8" />
                   </div>
                 )}
-                <Badge className="absolute top-3 left-3 bg-background/95 text-foreground border text-sm font-mono">
-                  {v.placa || "SEM PLACA"}
-                </Badge>
               </button>
-              <div className="p-4 space-y-3 flex-1 flex flex-col">
-                <button type="button" onClick={() => onVehicleClick(v.id)} className="text-left hover:text-primary transition">
-                  <p className="font-semibold">{v.nome}</p>
-                  <p className="text-sm text-muted-foreground">{v.modelo} · {v.ano}</p>
+              <div className="flex-1 min-w-0 p-3 flex flex-col">
+                <button
+                  type="button"
+                  onClick={() => onVehicleClick(v.id)}
+                  className="text-left hover:text-primary transition min-w-0"
+                >
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-semibold truncate">{v.nome}</p>
+                    <Badge variant="outline" className="text-xs font-mono">{v.placa || "—"}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">{v.modelo} · {v.ano}</p>
                 </button>
-                <div className="flex justify-between text-sm border-t pt-3">
-                  <span className="text-muted-foreground flex items-center gap-1">
-                    <Gauge className="size-4" /> {v.kmAtual.toLocaleString("pt-BR")} km
+                <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1.5">
+                  <span className="flex items-center gap-1">
+                    <Gauge className="size-3.5" /> {v.kmAtual.toLocaleString("pt-BR")} km
                   </span>
-                  <span className="text-muted-foreground">{ms.length} manut.</span>
+                  <span>{ms.length} manut.</span>
+                  <span className="text-foreground font-medium">{formatBRL(gasto)}</span>
                 </div>
-                <div className="flex gap-2 pt-1 mt-auto">
-                  <Button variant="outline" size="sm" className="flex-1 gap-1" onClick={() => openEdit(v)}>
-                    <Pencil className="size-3.5" /> Editar
+                <div className="flex gap-1 mt-auto pt-2">
+                  <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs" onClick={() => openEdit(v)}>
+                    <Pencil className="size-3" /> Editar
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="gap-1 text-destructive hover:text-destructive">
-                        <Trash2 className="size-3.5" />
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive hover:text-destructive">
+                        <Trash2 className="size-3" />
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
