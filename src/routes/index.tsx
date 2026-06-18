@@ -310,7 +310,7 @@ function StatCard({ label, value, icon }: { label: string; value: string; icon: 
   );
 }
 
-function VehiclesTab({ vehicles, saveVehicle, deleteVehicle, maintenances }: FleetState) {
+function VehiclesTab({ vehicles, saveVehicle, deleteVehicle, maintenances, onVehicleClick }: FleetState & { onVehicleClick: (id: string) => void }) {
   const [editing, setEditing] = useState<Vehicle | null>(null);
   const [open, setOpen] = useState(false);
 
@@ -340,23 +340,28 @@ function VehiclesTab({ vehicles, saveVehicle, deleteVehicle, maintenances }: Fle
           const ms = maintenances.filter((m) => m.vehicleId === v.id);
           return (
             <div key={v.id} className="rounded-xl border bg-card overflow-hidden flex flex-col">
-              <div className="aspect-video bg-muted relative">
+              <button
+                type="button"
+                onClick={() => onVehicleClick(v.id)}
+                title="Ver histórico de manutenções"
+                className="h-32 bg-muted relative w-full block hover:opacity-90 transition cursor-pointer"
+              >
                 {v.imagem ? (
-                  <img src={v.imagem} alt={v.nome} className="w-full h-full object-cover" />
+                  <img src={v.imagem} alt={v.nome} className="w-full h-full object-contain" />
                 ) : (
                   <div className="w-full h-full grid place-items-center text-muted-foreground">
-                    <Car className="size-12" />
+                    <Car className="size-10" />
                   </div>
                 )}
                 <Badge className="absolute top-3 left-3 bg-background/95 text-foreground border text-sm font-mono">
                   {v.placa || "SEM PLACA"}
                 </Badge>
-              </div>
+              </button>
               <div className="p-4 space-y-3 flex-1 flex flex-col">
-                <div>
+                <button type="button" onClick={() => onVehicleClick(v.id)} className="text-left hover:text-primary transition">
                   <p className="font-semibold">{v.nome}</p>
                   <p className="text-sm text-muted-foreground">{v.modelo} · {v.ano}</p>
-                </div>
+                </button>
                 <div className="flex justify-between text-sm border-t pt-3">
                   <span className="text-muted-foreground flex items-center gap-1">
                     <Gauge className="size-4" /> {v.kmAtual.toLocaleString("pt-BR")} km
@@ -534,10 +539,16 @@ function VehicleDialog({
   );
 }
 
-function MaintenanceTab({ vehicles, maintenances, saveMaintenance, deleteMaintenance }: FleetState) {
+function MaintenanceTab({
+  vehicles,
+  maintenances,
+  saveMaintenance,
+  deleteMaintenance,
+  filterVehicle,
+  setFilterVehicle,
+}: FleetState & { filterVehicle: string; setFilterVehicle: (v: string) => void }) {
   const [editing, setEditing] = useState<Maintenance | null>(null);
   const [open, setOpen] = useState(false);
-  const [filterVehicle, setFilterVehicle] = useState<string>("all");
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
