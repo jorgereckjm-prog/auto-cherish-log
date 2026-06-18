@@ -13,6 +13,7 @@ import {
   DollarSign,
   Calendar,
   Search,
+  Download,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -335,47 +336,53 @@ function VehiclesTab({ vehicles, saveVehicle, deleteVehicle, maintenances, onVeh
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {vehicles.map((v) => {
           const ms = maintenances.filter((m) => m.vehicleId === v.id);
+          const gasto = ms.reduce((s, m) => s + m.valor, 0);
           return (
-            <div key={v.id} className="rounded-xl border bg-card overflow-hidden flex flex-col">
+            <div key={v.id} className="rounded-xl border bg-card overflow-hidden flex">
               <button
                 type="button"
                 onClick={() => onVehicleClick(v.id)}
                 title="Ver histórico de manutenções"
-                className="h-32 bg-muted relative w-full block hover:opacity-90 transition cursor-pointer"
+                className="w-32 h-32 shrink-0 bg-muted relative hover:opacity-90 transition cursor-pointer"
               >
                 {v.imagem ? (
                   <img src={v.imagem} alt={v.nome} className="w-full h-full object-contain" />
                 ) : (
                   <div className="w-full h-full grid place-items-center text-muted-foreground">
-                    <Car className="size-10" />
+                    <Car className="size-8" />
                   </div>
                 )}
-                <Badge className="absolute top-3 left-3 bg-background/95 text-foreground border text-sm font-mono">
-                  {v.placa || "SEM PLACA"}
-                </Badge>
               </button>
-              <div className="p-4 space-y-3 flex-1 flex flex-col">
-                <button type="button" onClick={() => onVehicleClick(v.id)} className="text-left hover:text-primary transition">
-                  <p className="font-semibold">{v.nome}</p>
-                  <p className="text-sm text-muted-foreground">{v.modelo} · {v.ano}</p>
+              <div className="flex-1 min-w-0 p-3 flex flex-col">
+                <button
+                  type="button"
+                  onClick={() => onVehicleClick(v.id)}
+                  className="text-left hover:text-primary transition min-w-0"
+                >
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-semibold truncate">{v.nome}</p>
+                    <Badge variant="outline" className="text-xs font-mono">{v.placa || "—"}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">{v.modelo} · {v.ano}</p>
                 </button>
-                <div className="flex justify-between text-sm border-t pt-3">
-                  <span className="text-muted-foreground flex items-center gap-1">
-                    <Gauge className="size-4" /> {v.kmAtual.toLocaleString("pt-BR")} km
+                <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1.5">
+                  <span className="flex items-center gap-1">
+                    <Gauge className="size-3.5" /> {v.kmAtual.toLocaleString("pt-BR")} km
                   </span>
-                  <span className="text-muted-foreground">{ms.length} manut.</span>
+                  <span>{ms.length} manut.</span>
+                  <span className="text-foreground font-medium">{formatBRL(gasto)}</span>
                 </div>
-                <div className="flex gap-2 pt-1 mt-auto">
-                  <Button variant="outline" size="sm" className="flex-1 gap-1" onClick={() => openEdit(v)}>
-                    <Pencil className="size-3.5" /> Editar
+                <div className="flex gap-1 mt-auto pt-2">
+                  <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs" onClick={() => openEdit(v)}>
+                    <Pencil className="size-3" /> Editar
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="gap-1 text-destructive hover:text-destructive">
-                        <Trash2 className="size-3.5" />
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive hover:text-destructive">
+                        <Trash2 className="size-3" />
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
@@ -550,10 +557,12 @@ function MaintenanceTab({
   const [editing, setEditing] = useState<Maintenance | null>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [filterMonth, setFilterMonth] = useState<string>("all");
 
   const filtered = useMemo(() => {
     let list = [...maintenances].sort((a, b) => b.data.localeCompare(a.data));
     if (filterVehicle !== "all") list = list.filter((m) => m.vehicleId === filterVehicle);
+    if (filterMonth !== "all") list = list.filter((m) => m.data.slice(0, 7) === filterMonth);
     if (query.trim()) {
       const q = query.toLowerCase();
       list = list.filter(
@@ -564,7 +573,50 @@ function MaintenanceTab({
       );
     }
     return list;
-  }, [maintenances, filterVehicle, query]);
+  }, [maintenances, filterVehicle, filterMonth, query]);
+
+  const availableMonths = useMemo(() => {
+    const set = new Set(maintenances.map((m) => m.data.slice(0, 7)));
+    return Array.from(set).sort((a, b) => b.localeCompare(a));
+  }, [maintenances]);
+
+  function exportCSV() {
+    if (filtered.length === 0) {
+      toast.error("Nenhuma manutenção para exportar");
+      return;
+    }
+    const header = ["Data", "Veiculo", "Placa", "Tipo", "Descricao", "Oficina", "KM", "Valor"];
+    const rows = filtered.map((m) => {
+      const v = vehicles.find((x) => x.id === m.vehicleId);
+      return [
+        formatDate(m.data),
+        v?.nome ?? "",
+        v?.placa ?? "",
+        m.tipo,
+        m.descricao,
+        m.oficina ?? "",
+        String(m.km),
+        m.valor.toFixed(2).replace(".", ","),
+      ];
+    });
+    const total = filtered.reduce((s, m) => s + m.valor, 0);
+    rows.push(["", "", "", "", "", "", "TOTAL", total.toFixed(2).replace(".", ",")]);
+    const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
+    const csv = [header, ...rows].map((r) => r.map(escape).join(";")).join("\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const vehicleLabel =
+      filterVehicle === "all"
+        ? "geral"
+        : (vehicles.find((v) => v.id === filterVehicle)?.placa || "veiculo").replace(/\s+/g, "_");
+    const monthLabel = filterMonth === "all" ? "todos" : filterMonth;
+    a.href = url;
+    a.download = `manutencoes_${vehicleLabel}_${monthLabel}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Relatório exportado");
+  }
 
   function openNew() {
     setEditing({
@@ -592,13 +644,18 @@ function MaintenanceTab({
           <h2 className="text-xl font-semibold">Histórico de manutenções</h2>
           <p className="text-sm text-muted-foreground">{maintenances.length} registro(s) no total</p>
         </div>
-        <Button onClick={openNew} className="gap-2" disabled={vehicles.length === 0}>
-          <Plus className="size-4" /> Nova manutenção
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportCSV} className="gap-2">
+            <Download className="size-4" /> Exportar relatório
+          </Button>
+          <Button onClick={openNew} className="gap-2" disabled={vehicles.length === 0}>
+            <Plus className="size-4" /> Nova manutenção
+          </Button>
+        </div>
       </div>
 
       <Card>
-        <CardContent className="p-4 flex flex-col sm:flex-row gap-3">
+        <CardContent className="p-4 flex flex-col sm:flex-row gap-3 flex-wrap">
           <div className="relative flex-1">
             <Search className="size-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
             <Input
@@ -619,6 +676,26 @@ function MaintenanceTab({
                   {v.nome} · {v.placa}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterMonth} onValueChange={setFilterMonth}>
+            <SelectTrigger className="sm:w-48">
+              <SelectValue placeholder="Mês" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os meses</SelectItem>
+              {availableMonths.map((m) => {
+                const [y, mo] = m.split("-");
+                const label = new Date(Number(y), Number(mo) - 1, 1).toLocaleDateString("pt-BR", {
+                  month: "long",
+                  year: "numeric",
+                });
+                return (
+                  <SelectItem key={m} value={m}>
+                    {label}
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
         </CardContent>
