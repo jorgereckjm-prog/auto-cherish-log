@@ -414,7 +414,7 @@ function StatCard({ label, value, icon }: { label: string; value: string; icon: 
   );
 }
 
-function StatusMini({ label, count, info, icon }: { label: string; count: number; info: { bg: string; color: string; dot: string }; icon?: React.ReactNode }) {
+function StatusMini({ label, count, info, icon }: { label: string; count: number; info: { bg: string; color: string; dot: string; label?: string }; icon?: React.ReactNode }) {
   return (
     <div className={`rounded-md px-2.5 py-1.5 flex items-center justify-between gap-2 ${info.bg} ${info.color}`}>
       <span className="text-xs font-medium flex items-center gap-1.5">
