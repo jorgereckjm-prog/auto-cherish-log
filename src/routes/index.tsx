@@ -285,69 +285,6 @@ function Dashboard({ vehicles, maintenances, drivers, onVehicleClick }: FleetSta
         <StatCard label="Gasto no mês" value={formatBRL(gastoMes)} icon={<CalendarIcon className="size-5" />} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Status dos veículos</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            <StatusMini label="Ativos" count={vStats.ativo} info={vehicleStatusInfo.ativo} />
-            <StatusMini label="Manutenção" count={vStats.manutencao} info={vehicleStatusInfo.manutencao} />
-            <StatusMini label="Indisponíveis" count={vStats.indisponivel} info={vehicleStatusInfo.indisponivel} />
-            <StatusMini label="Emprestados" count={vStats.emprestado} info={vehicleStatusInfo.emprestado} />
-            <StatusMini label="Vendidos" count={vStats.vendido} info={vehicleStatusInfo.vendido} />
-            <StatusMini label="Sem motorista" count={semMotorista} info={{ bg: "bg-orange-100", color: "text-orange-700", dot: "bg-orange-500", label: "" }} />
-            <StatusMini label="C/ portão" count={comPortao} info={{ bg: "bg-indigo-100", color: "text-indigo-700", dot: "bg-indigo-500", label: "" }} icon={<KeyRound className="size-3" />} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Status dos motoristas</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            <StatusMini label="Ativos" count={dStats.ativo} info={driverStatusInfo.ativo} />
-            <StatusMini label="Férias" count={dStats.ferias} info={driverStatusInfo.ferias} />
-            <StatusMini label="Folga" count={dStats.folga} info={driverStatusInfo.folga} />
-            <StatusMini label="Inativos" count={dStats.inativo} info={driverStatusInfo.inativo} />
-            <StatusMini label="Sem veículo" count={motoristaSemVeic} info={{ bg: "bg-orange-100", color: "text-orange-700", dot: "bg-orange-500", label: "" }} />
-          </CardContent>
-        </Card>
-      </div>
-
-      {alerts.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="size-4 text-amber-500" /> Alertas</CardTitle>
-            <CardDescription className="text-xs">{alerts.length} item(s)</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-1.5 max-h-72 overflow-y-auto">
-            {alerts.map((a, i) => (
-              <div key={i} className={`text-xs rounded-md px-2 py-1.5 flex items-start gap-2 ${a.type === "warn" ? "bg-amber-50 text-amber-900" : "bg-muted text-foreground/80"}`}>
-                <span className={`size-1.5 rounded-full mt-1.5 shrink-0 ${a.type === "warn" ? "bg-amber-500" : "bg-muted-foreground"}`} />
-                {a.text}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Gastos por veículo</CardTitle>
-        </CardHeader>
-        <CardContent className="h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={porVeiculo}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-              <XAxis dataKey="placa" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip formatter={(v: number) => formatBRL(v)} contentStyle={{ borderRadius: 8, border: "1px solid var(--border)" }} />
-              <Bar dataKey="gasto" fill="var(--primary)" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Frota</CardTitle>
@@ -396,6 +333,69 @@ function Dashboard({ vehicles, maintenances, drivers, onVehicleClick }: FleetSta
           </div>
         </CardContent>
       </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Status dos veículos</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <StatusMini label="Ativos" count={vStats.ativo} info={vehicleStatusInfo.ativo} />
+            <StatusMini label="Manutenção" count={vStats.manutencao} info={vehicleStatusInfo.manutencao} />
+            <StatusMini label="Indisponíveis" count={vStats.indisponivel} info={vehicleStatusInfo.indisponivel} />
+            <StatusMini label="Emprestados" count={vStats.emprestado} info={vehicleStatusInfo.emprestado} />
+            <StatusMini label="Vendidos" count={vStats.vendido} info={vehicleStatusInfo.vendido} />
+            <StatusMini label="Sem motorista" count={semMotorista} info={{ bg: "bg-orange-100", color: "text-orange-700", dot: "bg-orange-500", label: "" }} />
+            <StatusMini label="C/ portão" count={comPortao} info={{ bg: "bg-indigo-100", color: "text-indigo-700", dot: "bg-indigo-500", label: "" }} icon={<KeyRound className="size-3" />} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Status dos motoristas</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <StatusMini label="Ativos" count={dStats.ativo} info={driverStatusInfo.ativo} />
+            <StatusMini label="Férias" count={dStats.ferias} info={driverStatusInfo.ferias} />
+            <StatusMini label="Folga" count={dStats.folga} info={driverStatusInfo.folga} />
+            <StatusMini label="Inativos" count={dStats.inativo} info={driverStatusInfo.inativo} />
+            <StatusMini label="Sem veículo" count={motoristaSemVeic} info={{ bg: "bg-orange-100", color: "text-orange-700", dot: "bg-orange-500", label: "" }} />
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Gastos por veículo</CardTitle>
+        </CardHeader>
+        <CardContent className="h-48">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={porVeiculo}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <XAxis dataKey="placa" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(v: number) => formatBRL(v)} contentStyle={{ borderRadius: 8, border: "1px solid var(--border)" }} />
+              <Bar dataKey="gasto" fill="var(--primary)" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {alerts.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="size-4 text-amber-500" /> Alertas</CardTitle>
+            <CardDescription className="text-xs">{alerts.length} item(s)</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-1.5 max-h-72 overflow-y-auto">
+            {alerts.map((a, i) => (
+              <div key={i} className={`text-xs rounded-md px-2 py-1.5 flex items-start gap-2 ${a.type === "warn" ? "bg-amber-50 text-amber-900" : "bg-muted text-foreground/80"}`}>
+                <span className={`size-1.5 rounded-full mt-1.5 shrink-0 ${a.type === "warn" ? "bg-amber-500" : "bg-muted-foreground"}`} />
+                {a.text}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
