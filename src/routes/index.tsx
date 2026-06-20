@@ -1303,19 +1303,32 @@ function CalendarTab({ vehicles, drivers }: FleetState) {
 
 /* ===================== HISTORY TAB ===================== */
 
-function HistoryTab({ audit, clearAudit }: FleetState) {
+function HistoryTab({ audit, clearAudit, vehicles, drivers }: FleetState) {
   const [filterEntity, setFilterEntity] = useState<string>("all");
+  const [filterTarget, setFilterTarget] = useState<string>("all");
+  const [filterMonth, setFilterMonth] = useState<string>("");
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
     let list = [...audit].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
     if (filterEntity !== "all") list = list.filter((a) => a.entidade === filterEntity);
+    if (filterTarget !== "all") list = list.filter((a) => a.entidadeId === filterTarget);
+    if (filterMonth) list = list.filter((a) => a.timestamp.slice(0, 7) === filterMonth);
     if (query.trim()) {
       const q = query.toLowerCase();
       list = list.filter((a) => a.entidadeNome.toLowerCase().includes(q) || a.acao.toLowerCase().includes(q) || (a.responsavel ?? "").toLowerCase().includes(q));
     }
     return list;
-  }, [audit, filterEntity, query]);
+  }, [audit, filterEntity, filterTarget, filterMonth, query]);
+
+  const targetOptions = useMemo(() => {
+    if (filterEntity === "motorista") return drivers.map((d) => ({ id: d.id, nome: d.nome }));
+    if (filterEntity === "veiculo") return vehicles.map((v) => ({ id: v.id, nome: `${v.nome} · ${v.placa}` }));
+    return [
+      ...vehicles.map((v) => ({ id: v.id, nome: `🚗 ${v.nome}` })),
+      ...drivers.map((d) => ({ id: d.id, nome: `👤 ${d.nome}` })),
+    ];
+  }, [filterEntity, vehicles, drivers]);
 
   function exportTxt() {
     if (filtered.length === 0) { toast.error("Nada a exportar"); return; }
@@ -1359,19 +1372,36 @@ function HistoryTab({ audit, clearAudit }: FleetState) {
       </div>
 
       <Card>
-        <CardContent className="p-4 flex flex-col sm:flex-row gap-3">
+        <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="relative flex-1">
             <Search className="size-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
             <Input placeholder="Buscar por entidade, ação, responsável..." className="pl-9" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
-          <Select value={filterEntity} onValueChange={setFilterEntity}>
-            <SelectTrigger className="sm:w-48"><SelectValue /></SelectTrigger>
+          <Select value={filterEntity} onValueChange={(v) => { setFilterEntity(v); setFilterTarget("all"); }}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas entidades</SelectItem>
               <SelectItem value="veiculo">Veículos</SelectItem>
               <SelectItem value="motorista">Motoristas</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={filterTarget} onValueChange={setFilterTarget}>
+            <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos (veículo/motorista)</SelectItem>
+              {targetOptions.map((o) => (
+                <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex gap-1">
+            <Input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="flex-1" />
+            {filterMonth && (
+              <Button variant="ghost" size="icon" onClick={() => setFilterMonth("")} title="Limpar mês">
+                <Trash2 className="size-4" />
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
