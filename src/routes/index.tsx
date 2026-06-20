@@ -455,7 +455,6 @@ function VehiclesTab({ vehicles, drivers, saveVehicle, deleteVehicle, maintenanc
         {vehicles.map((v) => {
           const ms = maintenances.filter((m) => m.vehicleId === v.id);
           const gasto = ms.reduce((s, m) => s + m.valor, 0);
-          const motorista = drivers.find((d) => d.id === v.motoristaId);
           return (
             <div key={v.id} className="rounded-xl border bg-card overflow-hidden flex">
               <button
@@ -470,55 +469,73 @@ function VehiclesTab({ vehicles, drivers, saveVehicle, deleteVehicle, maintenanc
                   <div className="w-full h-full grid place-items-center text-muted-foreground"><Car className="size-8" /></div>
                 )}
               </button>
-              <div className="flex-1 min-w-0 p-3 flex flex-col">
-                <button type="button" onClick={() => onVehicleClick(v.id)} className="text-left hover:text-primary transition min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-semibold truncate">{v.nome}</p>
-                    <Badge variant="outline" className="text-xs font-mono">{v.placa || "—"}</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground truncate">{v.modelo} · {v.ano}</p>
-                </button>
-                <div className="flex items-center gap-1.5 flex-wrap mt-1">
-                  <VehicleStatusBadge status={v.status} />
+              <div className="flex-1 min-w-0 p-3 flex gap-3">
+                <div className="flex-1 min-w-0 flex flex-col">
+                  <button type="button" onClick={() => onVehicleClick(v.id)} className="text-left hover:text-primary transition min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold truncate">{v.nome}</p>
+                      <Badge variant="outline" className="text-xs font-mono">{v.placa || "—"}</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">{v.modelo} · {v.ano}</p>
+                  </button>
                   {v.controleAcessoPortao && (
-                    <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-indigo-100 text-indigo-700 px-2 py-0.5">
+                    <span className="inline-flex w-fit items-center gap-1 text-[10px] rounded-full bg-indigo-100 text-indigo-700 px-2 py-0.5 mt-1">
                       <KeyRound className="size-3" /> Portão
                     </span>
                   )}
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                    <span className="flex items-center gap-1"><Gauge className="size-3.5" /> {v.kmAtual.toLocaleString("pt-BR")} km</span>
+                    <span>{ms.length} manut.</span>
+                    <span className="text-foreground font-medium">{formatBRL(gasto)}</span>
+                  </div>
+                  <div className="flex gap-1 mt-auto pt-2">
+                    <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs" onClick={() => openEdit(v)}>
+                      <Pencil className="size-3" /> Editar
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive hover:text-destructive">
+                          <Trash2 className="size-3" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Remover veículo?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Isso removerá <strong>{v.nome}</strong> e todas as {ms.length} manutenção(ões) vinculadas.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => { deleteVehicle(v.id); toast.success("Veículo removido"); }}>
+                            Remover
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1 truncate">
-                  Motorista: <span className="text-foreground">{motorista?.nome ?? "—"}</span>
-                </p>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                  <span className="flex items-center gap-1"><Gauge className="size-3.5" /> {v.kmAtual.toLocaleString("pt-BR")} km</span>
-                  <span>{ms.length} manut.</span>
-                  <span className="text-foreground font-medium">{formatBRL(gasto)}</span>
-                </div>
-                <div className="flex gap-1 mt-auto pt-2">
-                  <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs" onClick={() => openEdit(v)}>
-                    <Pencil className="size-3" /> Editar
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive hover:text-destructive">
-                        <Trash2 className="size-3" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Remover veículo?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Isso removerá <strong>{v.nome}</strong> e todas as {ms.length} manutenção(ões) vinculadas.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => { deleteVehicle(v.id); toast.success("Veículo removido"); }}>
-                          Remover
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                <div className="flex flex-col justify-between items-end gap-2 shrink-0 w-40">
+                  <QuickStatusSelect
+                    vehicle={v}
+                    onChange={(status) => {
+                      const today = new Date().toISOString().slice(0, 10);
+                      const next: Vehicle = { ...v, status };
+                      if (status === "manutencao" && !v.manutencao) next.manutencao = { inicio: today, previsaoFim: today, descricao: "" };
+                      if (status === "emprestado" && !v.emprestimo) next.emprestimo = { para: "", inicio: today, previsaoDevolucao: today };
+                      if (status === "vendido" && !v.venda) next.venda = { data: today };
+                      saveVehicle(next);
+                      toast.success("Status atualizado");
+                    }}
+                  />
+                  <QuickDriverSelect
+                    vehicle={v}
+                    drivers={drivers}
+                    onChange={(motoristaId) => {
+                      saveVehicle({ ...v, motoristaId: motoristaId || undefined });
+                      toast.success("Motorista atualizado");
+                    }}
+                  />
                 </div>
               </div>
             </div>
