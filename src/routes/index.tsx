@@ -287,6 +287,23 @@ function Dashboard({ vehicles, maintenances, drivers, onVehicleClick }: FleetSta
 
       <Card>
         <CardHeader className="pb-2">
+          <CardTitle className="text-base">Gastos por veículo</CardTitle>
+        </CardHeader>
+        <CardContent className="h-48">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={porVeiculo}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <XAxis dataKey="placa" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(v: number) => formatBRL(v)} contentStyle={{ borderRadius: 8, border: "1px solid var(--border)" }} />
+              <Bar dataKey="gasto" fill="var(--primary)" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
           <CardTitle className="text-base">Frota</CardTitle>
           <CardDescription className="text-xs">Clique em um veículo para ver as manutenções</CardDescription>
         </CardHeader>
@@ -366,23 +383,6 @@ function Dashboard({ vehicles, maintenances, drivers, onVehicleClick }: FleetSta
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Gastos por veículo</CardTitle>
-        </CardHeader>
-        <CardContent className="h-48">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={porVeiculo}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-              <XAxis dataKey="placa" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip formatter={(v: number) => formatBRL(v)} contentStyle={{ borderRadius: 8, border: "1px solid var(--border)" }} />
-              <Bar dataKey="gasto" fill="var(--primary)" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
 
       {alerts.length > 0 && (
         <Card>
