@@ -312,19 +312,23 @@ function Dashboard({ vehicles, maintenances, drivers, onVehicleClick }: FleetSta
                       </div>
                     )}
                   </div>
-                  <div className="min-w-0 flex-1 space-y-0.5">
-                    <p className="font-medium text-sm leading-tight truncate">{v.nome}</p>
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <Badge variant="outline" className="text-[10px] font-mono px-1 py-0 h-4">{v.placa || "—"}</Badge>
+                  <div className="min-w-0 flex-1 flex flex-col gap-1">
+                    <div className="flex items-start justify-between gap-1">
+                      <p className="font-medium text-sm leading-tight truncate">{v.nome}</p>
+                      <p className="text-xs font-medium text-muted-foreground truncate max-w-[50%] text-right">
+                        {motorista ? motorista.nome : <span className="italic">sem motorista</span>}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Badge variant="outline" className="text-xs font-mono px-1.5 py-0 h-5">{v.placa || "—"}</Badge>
                       <VehicleStatusBadge status={v.status} />
                     </div>
-                    <p className="text-[11px] text-muted-foreground truncate">
-                      {motorista ? motorista.nome : <span className="italic">sem motorista</span>}
-                    </p>
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                      <span className="flex items-center gap-1"><Gauge className="size-3" /> {v.kmAtual.toLocaleString("pt-BR")}</span>
-                      <span className="text-foreground font-medium">{formatBRL(gasto)}</span>
-                      {v.controleAcessoPortao && <KeyRound className="size-3 text-indigo-500" />}
+                    <div className="flex items-center justify-between mt-auto text-[11px] text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <span className="flex items-center gap-1"><Gauge className="size-3" /> {v.kmAtual.toLocaleString("pt-BR")}</span>
+                        <span className="text-foreground font-medium">{formatBRL(gasto)}</span>
+                      </div>
+                      {v.controleAcessoPortao && <KeyRound className="size-3.5 text-indigo-500" />}
                     </div>
                   </div>
                 </button>
@@ -522,26 +526,44 @@ function VehiclesTab({ vehicles, drivers, saveVehicle, deleteVehicle, maintenanc
                   <div className="w-full h-full grid place-items-center text-muted-foreground"><Car className="size-8" /></div>
                 )}
               </button>
-              <div className="flex-1 min-w-0 p-3 flex gap-3">
-                <div className="flex-1 min-w-0 flex flex-col">
-                  <button type="button" onClick={() => onVehicleClick(v.id)} className="text-left hover:text-primary transition min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex-1 min-w-0 p-3 flex flex-col gap-2">
+                {/* Topo: nome+modelo à esquerda, placa+status à direita */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <button type="button" onClick={() => onVehicleClick(v.id)} className="text-left hover:text-primary transition min-w-0 block">
                       <p className="font-semibold truncate">{v.nome}</p>
-                      <Badge variant="outline" className="text-xs font-mono">{v.placa || "—"}</Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground truncate">{v.modelo} · {v.ano}</p>
-                  </button>
-                  {v.controleAcessoPortao && (
-                    <span className="inline-flex w-fit items-center gap-1 text-[10px] rounded-full bg-indigo-100 text-indigo-700 px-2 py-0.5 mt-1">
-                      <KeyRound className="size-3" /> Portão
-                    </span>
-                  )}
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                    <span className="flex items-center gap-1"><Gauge className="size-3.5" /> {v.kmAtual.toLocaleString("pt-BR")} km</span>
-                    <span>{ms.length} manut.</span>
-                    <span className="text-foreground font-medium">{formatBRL(gasto)}</span>
+                      <p className="text-xs text-muted-foreground truncate">{v.modelo} · {v.ano}</p>
+                    </button>
                   </div>
-                  <div className="flex gap-1 mt-auto pt-2">
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <Badge variant="outline" className="text-sm font-mono px-2 py-0.5 h-auto">{v.placa || "—"}</Badge>
+                    <div className="w-36">
+                      <QuickStatusSelect
+                        vehicle={v}
+                        onChange={(status) => {
+                          const today = new Date().toISOString().slice(0, 10);
+                          const next: Vehicle = { ...v, status };
+                          if (status === "manutencao" && !v.manutencao) next.manutencao = { inicio: today, previsaoFim: today, descricao: "" };
+                          if (status === "emprestado" && !v.emprestimo) next.emprestimo = { para: "", inicio: today, previsaoDevolucao: today };
+                          if (status === "vendido" && !v.venda) next.venda = { data: today };
+                          saveVehicle(next);
+                          toast.success("Status atualizado");
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Meio */}
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1"><Gauge className="size-3.5" /> {v.kmAtual.toLocaleString("pt-BR")} km</span>
+                  <span>{ms.length} manut.</span>
+                  <span className="text-foreground font-medium">{formatBRL(gasto)}</span>
+                </div>
+
+                {/* Base */}
+                <div className="flex items-end justify-between mt-auto pt-1">
+                  <div className="flex gap-1">
                     <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs" onClick={() => openEdit(v)}>
                       <Pencil className="size-3" /> Editar
                     </Button>
@@ -567,28 +589,23 @@ function VehiclesTab({ vehicles, drivers, saveVehicle, deleteVehicle, maintenanc
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>
-                </div>
-                <div className="flex flex-col justify-between items-end gap-2 shrink-0 w-40">
-                  <QuickStatusSelect
-                    vehicle={v}
-                    onChange={(status) => {
-                      const today = new Date().toISOString().slice(0, 10);
-                      const next: Vehicle = { ...v, status };
-                      if (status === "manutencao" && !v.manutencao) next.manutencao = { inicio: today, previsaoFim: today, descricao: "" };
-                      if (status === "emprestado" && !v.emprestimo) next.emprestimo = { para: "", inicio: today, previsaoDevolucao: today };
-                      if (status === "vendido" && !v.venda) next.venda = { data: today };
-                      saveVehicle(next);
-                      toast.success("Status atualizado");
-                    }}
-                  />
-                  <QuickDriverSelect
-                    vehicle={v}
-                    drivers={drivers}
-                    onChange={(motoristaId) => {
-                      saveVehicle({ ...v, motoristaId: motoristaId || undefined });
-                      toast.success("Motorista atualizado");
-                    }}
-                  />
+                  <div className="flex flex-col items-end gap-1.5">
+                    {v.controleAcessoPortao && (
+                      <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-indigo-100 text-indigo-700 px-2 py-0.5">
+                        <KeyRound className="size-3" /> Portão
+                      </span>
+                    )}
+                    <div className="w-40">
+                      <QuickDriverSelect
+                        vehicle={v}
+                        drivers={drivers}
+                        onChange={(motoristaId) => {
+                          saveVehicle({ ...v, motoristaId: motoristaId || undefined });
+                          toast.success("Motorista atualizado");
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
