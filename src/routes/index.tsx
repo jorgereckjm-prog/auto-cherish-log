@@ -285,69 +285,6 @@ function Dashboard({ vehicles, maintenances, drivers, onVehicleClick }: FleetSta
         <StatCard label="Gasto no mês" value={formatBRL(gastoMes)} icon={<CalendarIcon className="size-5" />} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Status dos veículos</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            <StatusMini label="Ativos" count={vStats.ativo} info={vehicleStatusInfo.ativo} />
-            <StatusMini label="Manutenção" count={vStats.manutencao} info={vehicleStatusInfo.manutencao} />
-            <StatusMini label="Indisponíveis" count={vStats.indisponivel} info={vehicleStatusInfo.indisponivel} />
-            <StatusMini label="Emprestados" count={vStats.emprestado} info={vehicleStatusInfo.emprestado} />
-            <StatusMini label="Vendidos" count={vStats.vendido} info={vehicleStatusInfo.vendido} />
-            <StatusMini label="Sem motorista" count={semMotorista} info={{ bg: "bg-orange-100", color: "text-orange-700", dot: "bg-orange-500", label: "" }} />
-            <StatusMini label="C/ portão" count={comPortao} info={{ bg: "bg-indigo-100", color: "text-indigo-700", dot: "bg-indigo-500", label: "" }} icon={<KeyRound className="size-3" />} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Status dos motoristas</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            <StatusMini label="Ativos" count={dStats.ativo} info={driverStatusInfo.ativo} />
-            <StatusMini label="Férias" count={dStats.ferias} info={driverStatusInfo.ferias} />
-            <StatusMini label="Folga" count={dStats.folga} info={driverStatusInfo.folga} />
-            <StatusMini label="Inativos" count={dStats.inativo} info={driverStatusInfo.inativo} />
-            <StatusMini label="Sem veículo" count={motoristaSemVeic} info={{ bg: "bg-orange-100", color: "text-orange-700", dot: "bg-orange-500", label: "" }} />
-          </CardContent>
-        </Card>
-      </div>
-
-      {alerts.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="size-4 text-amber-500" /> Alertas</CardTitle>
-            <CardDescription className="text-xs">{alerts.length} item(s)</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-1.5 max-h-72 overflow-y-auto">
-            {alerts.map((a, i) => (
-              <div key={i} className={`text-xs rounded-md px-2 py-1.5 flex items-start gap-2 ${a.type === "warn" ? "bg-amber-50 text-amber-900" : "bg-muted text-foreground/80"}`}>
-                <span className={`size-1.5 rounded-full mt-1.5 shrink-0 ${a.type === "warn" ? "bg-amber-500" : "bg-muted-foreground"}`} />
-                {a.text}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Gastos por veículo</CardTitle>
-        </CardHeader>
-        <CardContent className="h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={porVeiculo}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-              <XAxis dataKey="placa" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip formatter={(v: number) => formatBRL(v)} contentStyle={{ borderRadius: 8, border: "1px solid var(--border)" }} />
-              <Bar dataKey="gasto" fill="var(--primary)" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Frota</CardTitle>
@@ -396,6 +333,69 @@ function Dashboard({ vehicles, maintenances, drivers, onVehicleClick }: FleetSta
           </div>
         </CardContent>
       </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Status dos veículos</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <StatusMini label="Ativos" count={vStats.ativo} info={vehicleStatusInfo.ativo} />
+            <StatusMini label="Manutenção" count={vStats.manutencao} info={vehicleStatusInfo.manutencao} />
+            <StatusMini label="Indisponíveis" count={vStats.indisponivel} info={vehicleStatusInfo.indisponivel} />
+            <StatusMini label="Emprestados" count={vStats.emprestado} info={vehicleStatusInfo.emprestado} />
+            <StatusMini label="Vendidos" count={vStats.vendido} info={vehicleStatusInfo.vendido} />
+            <StatusMini label="Sem motorista" count={semMotorista} info={{ bg: "bg-orange-100", color: "text-orange-700", dot: "bg-orange-500", label: "" }} />
+            <StatusMini label="C/ portão" count={comPortao} info={{ bg: "bg-indigo-100", color: "text-indigo-700", dot: "bg-indigo-500", label: "" }} icon={<KeyRound className="size-3" />} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Status dos motoristas</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <StatusMini label="Ativos" count={dStats.ativo} info={driverStatusInfo.ativo} />
+            <StatusMini label="Férias" count={dStats.ferias} info={driverStatusInfo.ferias} />
+            <StatusMini label="Folga" count={dStats.folga} info={driverStatusInfo.folga} />
+            <StatusMini label="Inativos" count={dStats.inativo} info={driverStatusInfo.inativo} />
+            <StatusMini label="Sem veículo" count={motoristaSemVeic} info={{ bg: "bg-orange-100", color: "text-orange-700", dot: "bg-orange-500", label: "" }} />
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Gastos por veículo</CardTitle>
+        </CardHeader>
+        <CardContent className="h-48">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={porVeiculo}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <XAxis dataKey="placa" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(v: number) => formatBRL(v)} contentStyle={{ borderRadius: 8, border: "1px solid var(--border)" }} />
+              <Bar dataKey="gasto" fill="var(--primary)" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {alerts.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="size-4 text-amber-500" /> Alertas</CardTitle>
+            <CardDescription className="text-xs">{alerts.length} item(s)</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-1.5 max-h-72 overflow-y-auto">
+            {alerts.map((a, i) => (
+              <div key={i} className={`text-xs rounded-md px-2 py-1.5 flex items-start gap-2 ${a.type === "warn" ? "bg-amber-50 text-amber-900" : "bg-muted text-foreground/80"}`}>
+                <span className={`size-1.5 rounded-full mt-1.5 shrink-0 ${a.type === "warn" ? "bg-amber-500" : "bg-muted-foreground"}`} />
+                {a.text}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
@@ -428,6 +428,59 @@ function StatusMini({ label, count, info, icon }: { label: string; count: number
 
 /* ===================== VEHICLES TAB ===================== */
 
+function QuickStatusSelect({ vehicle, onChange }: { vehicle: Vehicle; onChange: (s: VehicleStatus) => void }) {
+  const s = vehicle.status ?? "ativo";
+  const info = vehicleStatusInfo[s];
+  return (
+    <Select value={s} onValueChange={(val) => onChange(val as VehicleStatus)}>
+      <SelectTrigger
+        className={`h-7 w-full justify-between rounded-full border-0 px-2.5 text-xs font-medium ${info.bg} ${info.color} [&>svg]:size-3 [&>svg]:opacity-60`}
+      >
+        <span className="flex items-center gap-1.5">
+          <span className={`size-2 rounded-full ${info.dot}`} />
+          {info.label}
+        </span>
+      </SelectTrigger>
+      <SelectContent>
+        {(Object.keys(vehicleStatusInfo) as VehicleStatus[]).map((k) => (
+          <SelectItem key={k} value={k}>
+            <span className="flex items-center gap-2">
+              <span className={`size-2 rounded-full ${vehicleStatusInfo[k].dot}`} />
+              {vehicleStatusInfo[k].label}
+            </span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function QuickDriverSelect({ vehicle, drivers, onChange }: { vehicle: Vehicle; drivers: Driver[]; onChange: (driverId: string) => void }) {
+  const current = drivers.find((d) => d.id === vehicle.motoristaId);
+  return (
+    <div className="w-full">
+      <p className="text-[10px] text-muted-foreground mb-0.5 text-right">Motorista</p>
+      <Select
+        value={vehicle.motoristaId ?? "__none"}
+        onValueChange={(val) => onChange(val === "__none" ? "" : val)}
+        disabled={vehicle.status === "vendido"}
+      >
+        <SelectTrigger className="h-7 w-full text-xs [&>svg]:size-3">
+          <SelectValue placeholder="—">
+            <span className="truncate">{current?.nome ?? "—"}</span>
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__none">— sem motorista —</SelectItem>
+          {drivers.map((d) => (
+            <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 function VehiclesTab({ vehicles, drivers, saveVehicle, deleteVehicle, maintenances, onVehicleClick }: FleetState & { onVehicleClick: (id: string) => void }) {
   const [editing, setEditing] = useState<Vehicle | null>(null);
   const [open, setOpen] = useState(false);
@@ -455,7 +508,6 @@ function VehiclesTab({ vehicles, drivers, saveVehicle, deleteVehicle, maintenanc
         {vehicles.map((v) => {
           const ms = maintenances.filter((m) => m.vehicleId === v.id);
           const gasto = ms.reduce((s, m) => s + m.valor, 0);
-          const motorista = drivers.find((d) => d.id === v.motoristaId);
           return (
             <div key={v.id} className="rounded-xl border bg-card overflow-hidden flex">
               <button
@@ -470,55 +522,73 @@ function VehiclesTab({ vehicles, drivers, saveVehicle, deleteVehicle, maintenanc
                   <div className="w-full h-full grid place-items-center text-muted-foreground"><Car className="size-8" /></div>
                 )}
               </button>
-              <div className="flex-1 min-w-0 p-3 flex flex-col">
-                <button type="button" onClick={() => onVehicleClick(v.id)} className="text-left hover:text-primary transition min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-semibold truncate">{v.nome}</p>
-                    <Badge variant="outline" className="text-xs font-mono">{v.placa || "—"}</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground truncate">{v.modelo} · {v.ano}</p>
-                </button>
-                <div className="flex items-center gap-1.5 flex-wrap mt-1">
-                  <VehicleStatusBadge status={v.status} />
+              <div className="flex-1 min-w-0 p-3 flex gap-3">
+                <div className="flex-1 min-w-0 flex flex-col">
+                  <button type="button" onClick={() => onVehicleClick(v.id)} className="text-left hover:text-primary transition min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold truncate">{v.nome}</p>
+                      <Badge variant="outline" className="text-xs font-mono">{v.placa || "—"}</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">{v.modelo} · {v.ano}</p>
+                  </button>
                   {v.controleAcessoPortao && (
-                    <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-indigo-100 text-indigo-700 px-2 py-0.5">
+                    <span className="inline-flex w-fit items-center gap-1 text-[10px] rounded-full bg-indigo-100 text-indigo-700 px-2 py-0.5 mt-1">
                       <KeyRound className="size-3" /> Portão
                     </span>
                   )}
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                    <span className="flex items-center gap-1"><Gauge className="size-3.5" /> {v.kmAtual.toLocaleString("pt-BR")} km</span>
+                    <span>{ms.length} manut.</span>
+                    <span className="text-foreground font-medium">{formatBRL(gasto)}</span>
+                  </div>
+                  <div className="flex gap-1 mt-auto pt-2">
+                    <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs" onClick={() => openEdit(v)}>
+                      <Pencil className="size-3" /> Editar
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive hover:text-destructive">
+                          <Trash2 className="size-3" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Remover veículo?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Isso removerá <strong>{v.nome}</strong> e todas as {ms.length} manutenção(ões) vinculadas.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => { deleteVehicle(v.id); toast.success("Veículo removido"); }}>
+                            Remover
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1 truncate">
-                  Motorista: <span className="text-foreground">{motorista?.nome ?? "—"}</span>
-                </p>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                  <span className="flex items-center gap-1"><Gauge className="size-3.5" /> {v.kmAtual.toLocaleString("pt-BR")} km</span>
-                  <span>{ms.length} manut.</span>
-                  <span className="text-foreground font-medium">{formatBRL(gasto)}</span>
-                </div>
-                <div className="flex gap-1 mt-auto pt-2">
-                  <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs" onClick={() => openEdit(v)}>
-                    <Pencil className="size-3" /> Editar
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive hover:text-destructive">
-                        <Trash2 className="size-3" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Remover veículo?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Isso removerá <strong>{v.nome}</strong> e todas as {ms.length} manutenção(ões) vinculadas.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => { deleteVehicle(v.id); toast.success("Veículo removido"); }}>
-                          Remover
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                <div className="flex flex-col justify-between items-end gap-2 shrink-0 w-40">
+                  <QuickStatusSelect
+                    vehicle={v}
+                    onChange={(status) => {
+                      const today = new Date().toISOString().slice(0, 10);
+                      const next: Vehicle = { ...v, status };
+                      if (status === "manutencao" && !v.manutencao) next.manutencao = { inicio: today, previsaoFim: today, descricao: "" };
+                      if (status === "emprestado" && !v.emprestimo) next.emprestimo = { para: "", inicio: today, previsaoDevolucao: today };
+                      if (status === "vendido" && !v.venda) next.venda = { data: today };
+                      saveVehicle(next);
+                      toast.success("Status atualizado");
+                    }}
+                  />
+                  <QuickDriverSelect
+                    vehicle={v}
+                    drivers={drivers}
+                    onChange={(motoristaId) => {
+                      saveVehicle({ ...v, motoristaId: motoristaId || undefined });
+                      toast.success("Motorista atualizado");
+                    }}
+                  />
                 </div>
               </div>
             </div>
@@ -1233,19 +1303,32 @@ function CalendarTab({ vehicles, drivers }: FleetState) {
 
 /* ===================== HISTORY TAB ===================== */
 
-function HistoryTab({ audit, clearAudit }: FleetState) {
+function HistoryTab({ audit, clearAudit, vehicles, drivers }: FleetState) {
   const [filterEntity, setFilterEntity] = useState<string>("all");
+  const [filterTarget, setFilterTarget] = useState<string>("all");
+  const [filterMonth, setFilterMonth] = useState<string>("");
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
     let list = [...audit].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
     if (filterEntity !== "all") list = list.filter((a) => a.entidade === filterEntity);
+    if (filterTarget !== "all") list = list.filter((a) => a.entidadeId === filterTarget);
+    if (filterMonth) list = list.filter((a) => a.timestamp.slice(0, 7) === filterMonth);
     if (query.trim()) {
       const q = query.toLowerCase();
       list = list.filter((a) => a.entidadeNome.toLowerCase().includes(q) || a.acao.toLowerCase().includes(q) || (a.responsavel ?? "").toLowerCase().includes(q));
     }
     return list;
-  }, [audit, filterEntity, query]);
+  }, [audit, filterEntity, filterTarget, filterMonth, query]);
+
+  const targetOptions = useMemo(() => {
+    if (filterEntity === "motorista") return drivers.map((d) => ({ id: d.id, nome: d.nome }));
+    if (filterEntity === "veiculo") return vehicles.map((v) => ({ id: v.id, nome: `${v.nome} · ${v.placa}` }));
+    return [
+      ...vehicles.map((v) => ({ id: v.id, nome: `🚗 ${v.nome}` })),
+      ...drivers.map((d) => ({ id: d.id, nome: `👤 ${d.nome}` })),
+    ];
+  }, [filterEntity, vehicles, drivers]);
 
   function exportTxt() {
     if (filtered.length === 0) { toast.error("Nada a exportar"); return; }
@@ -1289,19 +1372,36 @@ function HistoryTab({ audit, clearAudit }: FleetState) {
       </div>
 
       <Card>
-        <CardContent className="p-4 flex flex-col sm:flex-row gap-3">
+        <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="relative flex-1">
             <Search className="size-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
             <Input placeholder="Buscar por entidade, ação, responsável..." className="pl-9" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
-          <Select value={filterEntity} onValueChange={setFilterEntity}>
-            <SelectTrigger className="sm:w-48"><SelectValue /></SelectTrigger>
+          <Select value={filterEntity} onValueChange={(v) => { setFilterEntity(v); setFilterTarget("all"); }}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas entidades</SelectItem>
               <SelectItem value="veiculo">Veículos</SelectItem>
               <SelectItem value="motorista">Motoristas</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={filterTarget} onValueChange={setFilterTarget}>
+            <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos (veículo/motorista)</SelectItem>
+              {targetOptions.map((o) => (
+                <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex gap-1">
+            <Input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="flex-1" />
+            {filterMonth && (
+              <Button variant="ghost" size="icon" onClick={() => setFilterMonth("")} title="Limpar mês">
+                <Trash2 className="size-4" />
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
