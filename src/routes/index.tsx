@@ -428,6 +428,59 @@ function StatusMini({ label, count, info, icon }: { label: string; count: number
 
 /* ===================== VEHICLES TAB ===================== */
 
+function QuickStatusSelect({ vehicle, onChange }: { vehicle: Vehicle; onChange: (s: VehicleStatus) => void }) {
+  const s = vehicle.status ?? "ativo";
+  const info = vehicleStatusInfo[s];
+  return (
+    <Select value={s} onValueChange={(val) => onChange(val as VehicleStatus)}>
+      <SelectTrigger
+        className={`h-7 w-full justify-between rounded-full border-0 px-2.5 text-xs font-medium ${info.bg} ${info.color} [&>svg]:size-3 [&>svg]:opacity-60`}
+      >
+        <span className="flex items-center gap-1.5">
+          <span className={`size-2 rounded-full ${info.dot}`} />
+          {info.label}
+        </span>
+      </SelectTrigger>
+      <SelectContent>
+        {(Object.keys(vehicleStatusInfo) as VehicleStatus[]).map((k) => (
+          <SelectItem key={k} value={k}>
+            <span className="flex items-center gap-2">
+              <span className={`size-2 rounded-full ${vehicleStatusInfo[k].dot}`} />
+              {vehicleStatusInfo[k].label}
+            </span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function QuickDriverSelect({ vehicle, drivers, onChange }: { vehicle: Vehicle; drivers: Driver[]; onChange: (driverId: string) => void }) {
+  const current = drivers.find((d) => d.id === vehicle.motoristaId);
+  return (
+    <div className="w-full">
+      <p className="text-[10px] text-muted-foreground mb-0.5 text-right">Motorista</p>
+      <Select
+        value={vehicle.motoristaId ?? "__none"}
+        onValueChange={(val) => onChange(val === "__none" ? "" : val)}
+        disabled={vehicle.status === "vendido"}
+      >
+        <SelectTrigger className="h-7 w-full text-xs [&>svg]:size-3">
+          <SelectValue placeholder="—">
+            <span className="truncate">{current?.nome ?? "—"}</span>
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__none">— sem motorista —</SelectItem>
+          {drivers.map((d) => (
+            <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 function VehiclesTab({ vehicles, drivers, saveVehicle, deleteVehicle, maintenances, onVehicleClick }: FleetState & { onVehicleClick: (id: string) => void }) {
   const [editing, setEditing] = useState<Vehicle | null>(null);
   const [open, setOpen] = useState(false);
