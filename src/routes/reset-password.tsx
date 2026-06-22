@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
-export const Route = createFileRoute("/auth/reset-password")({
+export const Route = createFileRoute("/reset-password")({
   head: () => ({ meta: [{ title: "Nova senha — FrotaPro" }] }),
   component: ResetPage,
 });
