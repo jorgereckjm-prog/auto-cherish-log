@@ -95,7 +95,7 @@ function AdminUsersPage() {
       user_id: user.id,
       actor_email: user.email,
       acao,
-      detalhes,
+      detalhes: detalhes as never,
     });
   }
 
