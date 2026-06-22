@@ -28,6 +28,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AdminMenu } from "@/components/admin-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -140,6 +141,7 @@ function Index() {
               placeholder="Operador"
               className="h-8 w-40 text-sm"
             />
+            <AdminMenu />
           </div>
         </div>
       </header>
