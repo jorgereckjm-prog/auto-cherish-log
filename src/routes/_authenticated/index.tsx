@@ -91,7 +91,7 @@ import {
 } from "@/lib/fleet-store";
 import logoAsset from "@/assets/patrimonial-telecom-logo.png.asset.json";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
       { title: "FrotaPro — Controle de Frotas e Motoristas" },
