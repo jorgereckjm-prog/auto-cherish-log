@@ -14,16 +14,143 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      audit_logs: {
+        Row: {
+          acao: string
+          actor_email: string | null
+          created_at: string
+          detalhes: Json | null
+          id: string
+          ip: string | null
+          user_id: string | null
+        }
+        Insert: {
+          acao: string
+          actor_email?: string | null
+          created_at?: string
+          detalhes?: Json | null
+          id?: string
+          ip?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          acao?: string
+          actor_email?: string | null
+          created_at?: string
+          detalhes?: Json | null
+          id?: string
+          ip?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          cargo: string | null
+          created_at: string
+          email: string
+          id: string
+          nome: string
+          status: Database["public"]["Enums"]["account_status"]
+          updated_at: string
+        }
+        Insert: {
+          cargo?: string | null
+          created_at?: string
+          email: string
+          id: string
+          nome?: string
+          status?: Database["public"]["Enums"]["account_status"]
+          updated_at?: string
+        }
+        Update: {
+          cargo?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          nome?: string
+          status?: Database["public"]["Enums"]["account_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_permissions: {
+        Row: {
+          can_access_admin_panel: boolean
+          can_create: boolean
+          can_delete: boolean
+          can_download: boolean
+          can_edit: boolean
+          can_manage_users: boolean
+          can_view: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          can_access_admin_panel?: boolean
+          can_create?: boolean
+          can_delete?: boolean
+          can_download?: boolean
+          can_edit?: boolean
+          can_manage_users?: boolean
+          can_view?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          can_access_admin_panel?: boolean
+          can_create?: boolean
+          can_delete?: boolean
+          can_download?: boolean
+          can_edit?: boolean
+          can_manage_users?: boolean
+          can_view?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_status: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["account_status"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      account_status: "pending" | "approved" | "rejected" | "suspended"
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +277,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      account_status: ["pending", "approved", "rejected", "suspended"],
+      app_role: ["admin", "user"],
+    },
   },
 } as const
