@@ -1,89 +1,74 @@
-# Plano: Login, Aprovação Admin e Permissões
+Vou implementar uma reformulação completa do sistema de controle de frotas com integração entre veículos, motoristas, histórico, calendário e dashboard gerencial. Todos os dados continuam em `localStorage` (sem backend) — funciona offline no app Electron.
 
-## Visão geral
+## Estrutura proposta
 
-Implementar um sistema completo de autenticação onde:
-- Qualquer pessoa pode se cadastrar (e-mail/senha ou Google), mas fica como `pending`.
-- Você (Jorge Miguel) é o admin que aprova/rejeita cada cadastro.
-- Usuários comuns só veem o que o admin permitir.
-- E-mails automáticos avisam o usuário em cada etapa.
-- Engrenagem no canto superior direito abre o painel administrativo (visível só para admins).
+### Novas abas
+```
+Dashboard | Veículos | Motoristas | Manutenções | Calendário | Histórico
+```
 
-> **Preciso confirmar:** Qual e-mail você usará como SUPER ADMIN? (será marcado como admin no primeiro login) — me responda com o e-mail ao aprovar o plano.
+### Arquivos a criar/editar
+- `src/lib/fleet-store.ts` — expandir tipos e store (Vehicle, Driver, Maintenance, Loan, Sale, AuditLog)
+- `src/components/fleet/VehiclesTab.tsx` — extrair e expandir
+- `src/components/fleet/DriversTab.tsx` — novo
+- `src/components/fleet/MaintenanceTab.tsx` — extrair
+- `src/components/fleet/CalendarTab.tsx` — novo (visualização mensal/semanal)
+- `src/components/fleet/HistoryTab.tsx` — novo (auditoria)
+- `src/components/fleet/Dashboard.tsx` — expandir com novos indicadores e alertas
+- `src/components/fleet/VehicleDialog.tsx` — formulário com status, motorista, controle de portão
+- `src/components/fleet/DriverDialog.tsx` — formulário com status e vínculo
+- `src/routes/index.tsx` — orquestrar tabs
 
-## Banco de dados (Lovable Cloud)
+## Modelo de dados
 
-### Enums
-- `app_role`: `admin`, `user`
-- `account_status`: `pending`, `approved`, `rejected`, `suspended`
+```ts
+type VehicleStatus = "ativo" | "manutencao" | "indisponivel" | "emprestado" | "vendido";
+type DriverStatus = "ativo" | "inativo" | "ferias" | "folga";
 
-### Tabelas
-- **`profiles`** — `id` (FK → auth.users), `nome`, `email`, `cargo`, `status`, `created_at`, `updated_at`
-- **`user_roles`** — `id`, `user_id`, `role` (em tabela separada por segurança — nunca em profiles)
-- **`user_permissions`** — `user_id`, `can_view`, `can_create`, `can_edit`, `can_delete`, `can_download`, `can_manage_users`, `can_access_admin_panel` (todas `false` por padrão)
-- **`audit_logs`** — `id`, `user_id`, `acao`, `detalhes`, `ip`, `created_at`
+type Vehicle = {
+  id, nome, placa, modelo, ano, kmAtual, imagem?, observacoes?,
+  controleAcessoPortao: boolean,
+  motoristaId?: string,
+  status: VehicleStatus,
+  // dados conforme status
+  manutencao?: { inicio, previsaoFim, fimReal?, descricao, observacoes?, valor? },
+  emprestimo?: { para, inicio, previsaoDevolucao, observacoes? },
+  venda?: { data, comprador?, valor?, observacoes? },
+};
 
-### Funções de segurança (SECURITY DEFINER)
-- `has_role(_user_id, _role)` — evita recursão em RLS
-- `get_user_status(_user_id)` — retorna status do usuário
-- Trigger `handle_new_user()` em `auth.users` → cria profile + permissions; se e-mail = `SUPER_ADMIN_EMAIL`, status=approved e role=admin; senão status=pending
+type Driver = {
+  id, nome, telefone?, observacoes?,
+  veiculoId?: string,
+  status: DriverStatus,
+  ferias?: { inicio, fim, observacoes? },
+  folga?: { inicio, fim, observacoes? },
+  inativo?: { inicio, motivo, observacoes? },
+};
 
-### RLS
-- Usuários só leem o próprio profile/permissions; admin lê tudo
-- Só admin pode UPDATE/DELETE em profiles, roles, permissions
-- Só admin lê audit_logs
+type AuditLog = {
+  id, timestamp, entidade: "veiculo"|"motorista",
+  entidadeId, entidadeNome, acao, antes?, depois?, observacoes?
+};
+```
 
-## Frontend
+## Funcionalidades
 
-### Rotas novas
-- `/auth` — login + cadastro (tabs), botão "Esqueci minha senha", botão Google (via `lovable.auth.signInWithOAuth`)
-- `/auth/reset-password` — define nova senha após link de recuperação
-- `/auth/pending` — tela que aparece quando usuário aprovado=false ("Aguardando aprovação do administrador")
-- `/admin/users` — painel admin: lista de pendentes/aprovados, ações aprovar/rejeitar/suspender/reativar, editor de permissões
-- `/admin/logs` — auditoria
-- `/conta/senha` — alterar senha logado
+**Veículos** — Card com indicador colorido de status (🟩🟥🟨🟦⬜), checkbox controle de portão visível na lista, dialog de edição com seções dinâmicas (manutenção/empréstimo/venda), motorista vinculado (select), botão "Histórico de manutenções".
 
-### Proteção
-- Rotas existentes (Dashboard, Veículos, etc.) ficam sob `_authenticated/` e checam `status=approved`
-- Menus admin só renderizam para `has_role('admin')` — usuários comuns nem veem
-- Botões (criar, editar, excluir, download) renderizam apenas se permissão correspondente = true
-- RLS no banco bloqueia mesmo que alguém burle o frontend
+**Motoristas** — Nova aba com lista, dialog com status condicional (férias/folga/inativo abrem campos extras), veículo vinculado (select de veículos não vendidos).
 
-### Header
-- Engrenagem (Settings icon) no canto superior direito do header global
-- Dropdown com: **Usuários pendentes** (badge com contagem), **Gerenciar usuários**, **Logs do sistema**, **Configurações**, **Alterar minha senha**, **Sair**
-- Itens admin ocultos para usuários comuns; apenas "Alterar senha" e "Sair" aparecem
+**Vínculo automático** — Ao salvar veículo com motorista: limpar vínculo antigo do motorista, atualizar ambos, registrar log. Ao vender: remover vínculo.
 
-## E-mails automáticos
+**Calendário** — Grid mensal com navegação prev/next, células coloridas por evento (manutenção/empréstimo/férias/folga), filtros por veículo/motorista, visualização semanal opcional.
 
-Usando **Lovable Emails** (built-in):
-1. **Após cadastro** → "Conta criada — aguardando aprovação"
-2. **Após aprovação** → "Sua conta foi aprovada"
-3. **Após rejeição** → "Sua solicitação não foi aprovada"
-4. **Reset de senha** → template padrão de recuperação
+**Histórico** — Lista cronológica reversa de todos os logs, filtro por entidade, exportável.
 
-Trigger: server function `notifyAccountStatusChange` chamada após mudança de status.
+**Dashboard** — Cards de contagem por status (veículos e motoristas), alertas automáticos (manutenções vencendo em 3 dias, empréstimos vencendo, férias terminando, veículos/motoristas sem vínculo).
 
-## Migração do app atual
+**Usuário responsável** — Como não há login, usar campo "Responsável" digitado no momento da ação, ou um setting global "Usuário atual" salvo em localStorage.
 
-O app de frota hoje não exige login. Após implementação:
-- Conteúdo atual (Dashboard, Veículos, Motoristas, etc.) move para `_authenticated/`
-- Dados em `localStorage` continuam funcionando (não migramos para o banco neste plano — pode ser próximo passo se quiser)
-- O primeiro login do SUPER_ADMIN_EMAIL ativa o admin automaticamente
+## Pontos a confirmar
 
-## Detalhes técnicos
-
-- TanStack Start file-based routing; layout `_authenticated/route.tsx` já é gerenciado pela integração
-- Google OAuth via `lovable.auth.signInWithOAuth('google', ...)` — sem precisar de credenciais
-- Server functions com `requireSupabaseAuth` para ações admin (aprovar/rejeitar/promover)
-- Service-role usado apenas em server-side para enviar e-mails e listar todos os usuários
-- Engrenagem é um componente `<AdminMenu />` reutilizável no header
-
-## Itens fora do escopo (faço depois se quiser)
-
-- Migrar dados de localStorage para o banco (cada veículo/motorista por usuário)
-- Login com SAML/SSO
-- 2FA
-- Compartilhamento granular por veículo
-
-Confirme com o **e-mail do super admin** que devo configurar e eu começo a implementação.
+1. Sem backend (tudo em `localStorage`) — confirma? Ou quer Lovable Cloud para sincronizar entre dispositivos?
+2. "Usuário responsável" — pedir no momento da ação ou ter um campo global "Operador" no topo?
+3. Manter as 7 abas (Dashboard, Veículos, Motoristas, Manutenções, Calendário, Histórico) ou agrupar?

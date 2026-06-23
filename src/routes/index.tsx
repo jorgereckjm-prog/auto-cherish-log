@@ -28,7 +28,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AdminMenu } from "@/components/admin-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -92,7 +91,7 @@ import {
 } from "@/lib/fleet-store";
 import logoAsset from "@/assets/patrimonial-telecom-logo.png.asset.json";
 
-export const Route = createFileRoute("/_authenticated/")({
+export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "FrotaPro — Controle de Frotas e Motoristas" },
@@ -141,7 +140,6 @@ function Index() {
               placeholder="Operador"
               className="h-8 w-40 text-sm"
             />
-            <AdminMenu />
           </div>
         </div>
       </header>
