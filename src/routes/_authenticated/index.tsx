@@ -502,6 +502,7 @@ function QuickDriverSelect({ vehicle, drivers, onChange }: { vehicle: Vehicle; d
 function VehiclesTab({ vehicles, drivers, saveVehicle, deleteVehicle, maintenances, onVehicleClick }: FleetState & { onVehicleClick: (id: string) => void }) {
   const [editing, setEditing] = useState<Vehicle | null>(null);
   const [open, setOpen] = useState(false);
+  const { canEdit } = usePermissions();
 
   function openNew() {
     setEditing({ id: newId(), nome: "", placa: "", modelo: "", ano: "", kmAtual: 0, status: "ativo", controleAcessoPortao: false });
@@ -519,7 +520,7 @@ function VehiclesTab({ vehicles, drivers, saveVehicle, deleteVehicle, maintenanc
           <h2 className="text-xl font-semibold">Veículos da frota</h2>
           <p className="text-sm text-muted-foreground">{vehicles.length} veículo(s) cadastrado(s)</p>
         </div>
-        <Button onClick={openNew} className="gap-2"><Plus className="size-4" /> Novo veículo</Button>
+        {canEdit && <Button onClick={openNew} className="gap-2"><Plus className="size-4" /> Novo veículo</Button>}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
