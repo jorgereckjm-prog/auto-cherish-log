@@ -447,8 +447,9 @@ function StatusMini({ label, count, info, icon }: { label: string; count: number
 function QuickStatusSelect({ vehicle, onChange }: { vehicle: Vehicle; onChange: (s: VehicleStatus) => void }) {
   const s = vehicle.status ?? "ativo";
   const info = vehicleStatusInfo[s];
+  const { canEdit } = usePermissions();
   return (
-    <Select value={s} onValueChange={(val) => onChange(val as VehicleStatus)}>
+    <Select value={s} onValueChange={(val) => onChange(val as VehicleStatus)} disabled={!canEdit}>
       <SelectTrigger
         className={`h-7 w-full justify-between rounded-full border-0 px-2.5 text-xs font-medium ${info.bg} ${info.color} [&>svg]:size-3 [&>svg]:opacity-60`}
       >
@@ -473,13 +474,14 @@ function QuickStatusSelect({ vehicle, onChange }: { vehicle: Vehicle; onChange: 
 
 function QuickDriverSelect({ vehicle, drivers, onChange }: { vehicle: Vehicle; drivers: Driver[]; onChange: (driverId: string) => void }) {
   const current = drivers.find((d) => d.id === vehicle.motoristaId);
+  const { canEdit } = usePermissions();
   return (
     <div className="w-full">
       <p className="text-[10px] text-muted-foreground mb-0.5 text-right">Motorista</p>
       <Select
         value={vehicle.motoristaId ?? "__none"}
         onValueChange={(val) => onChange(val === "__none" ? "" : val)}
-        disabled={vehicle.status === "vendido"}
+        disabled={vehicle.status === "vendido" || !canEdit}
       >
         <SelectTrigger className="h-7 w-full text-xs [&>svg]:size-3">
           <SelectValue placeholder="—">
