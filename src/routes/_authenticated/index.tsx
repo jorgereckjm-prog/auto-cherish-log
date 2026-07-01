@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { toast } from "sonner";
 import {
@@ -22,6 +22,8 @@ import {
   ChevronRight,
   FileText,
   User,
+  Settings,
+  Eye,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -90,8 +92,9 @@ import {
   type DriverStatus,
 } from "@/lib/fleet-store";
 import logoAsset from "@/assets/patrimonial-telecom-logo.png.asset.json";
+import { usePermissions } from "@/lib/permissions";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
       { title: "FrotaPro — Controle de Frotas e Motoristas" },
@@ -107,6 +110,7 @@ type FleetState = ReturnType<typeof useFleet>;
 
 function Index() {
   const fleet = useFleet();
+  const perms = usePermissions();
   const [tab, setTab] = useState<string>("dashboard");
   const [maintFilterVehicle, setMaintFilterVehicle] = useState<string>("all");
 
@@ -140,6 +144,14 @@ function Index() {
               placeholder="Operador"
               className="h-8 w-40 text-sm"
             />
+            {!perms.canEdit && !perms.loading && (
+              <Badge variant="secondary" className="gap-1 text-xs"><Eye className="size-3" /> Visualização</Badge>
+            )}
+            <Link to="/configuracoes" title="Configurações">
+              <Button variant="ghost" size="icon" className="size-8">
+                <Settings className="size-4" />
+              </Button>
+            </Link>
           </div>
         </div>
       </header>
@@ -435,8 +447,9 @@ function StatusMini({ label, count, info, icon }: { label: string; count: number
 function QuickStatusSelect({ vehicle, onChange }: { vehicle: Vehicle; onChange: (s: VehicleStatus) => void }) {
   const s = vehicle.status ?? "ativo";
   const info = vehicleStatusInfo[s];
+  const { canEdit } = usePermissions();
   return (
-    <Select value={s} onValueChange={(val) => onChange(val as VehicleStatus)}>
+    <Select value={s} onValueChange={(val) => onChange(val as VehicleStatus)} disabled={!canEdit}>
       <SelectTrigger
         className={`h-7 w-full justify-between rounded-full border-0 px-2.5 text-xs font-medium ${info.bg} ${info.color} [&>svg]:size-3 [&>svg]:opacity-60`}
       >
@@ -461,13 +474,14 @@ function QuickStatusSelect({ vehicle, onChange }: { vehicle: Vehicle; onChange: 
 
 function QuickDriverSelect({ vehicle, drivers, onChange }: { vehicle: Vehicle; drivers: Driver[]; onChange: (driverId: string) => void }) {
   const current = drivers.find((d) => d.id === vehicle.motoristaId);
+  const { canEdit } = usePermissions();
   return (
     <div className="w-full">
       <p className="text-[10px] text-muted-foreground mb-0.5 text-right">Motorista</p>
       <Select
         value={vehicle.motoristaId ?? "__none"}
         onValueChange={(val) => onChange(val === "__none" ? "" : val)}
-        disabled={vehicle.status === "vendido"}
+        disabled={vehicle.status === "vendido" || !canEdit}
       >
         <SelectTrigger className="h-7 w-full text-xs [&>svg]:size-3">
           <SelectValue placeholder="—">
@@ -488,6 +502,7 @@ function QuickDriverSelect({ vehicle, drivers, onChange }: { vehicle: Vehicle; d
 function VehiclesTab({ vehicles, drivers, saveVehicle, deleteVehicle, maintenances, onVehicleClick }: FleetState & { onVehicleClick: (id: string) => void }) {
   const [editing, setEditing] = useState<Vehicle | null>(null);
   const [open, setOpen] = useState(false);
+  const { canEdit } = usePermissions();
 
   function openNew() {
     setEditing({ id: newId(), nome: "", placa: "", modelo: "", ano: "", kmAtual: 0, status: "ativo", controleAcessoPortao: false });
@@ -505,7 +520,7 @@ function VehiclesTab({ vehicles, drivers, saveVehicle, deleteVehicle, maintenanc
           <h2 className="text-xl font-semibold">Veículos da frota</h2>
           <p className="text-sm text-muted-foreground">{vehicles.length} veículo(s) cadastrado(s)</p>
         </div>
-        <Button onClick={openNew} className="gap-2"><Plus className="size-4" /> Novo veículo</Button>
+        {canEdit && <Button onClick={openNew} className="gap-2"><Plus className="size-4" /> Novo veículo</Button>}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -563,7 +578,7 @@ function VehiclesTab({ vehicles, drivers, saveVehicle, deleteVehicle, maintenanc
 
                 {/* Base */}
                 <div className="flex items-end justify-between mt-auto pt-1">
-                  <div className="flex gap-1">
+                  <div className="flex gap-1">{canEdit && (<>
                     <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs" onClick={() => openEdit(v)}>
                       <Pencil className="size-3" /> Editar
                     </Button>
@@ -588,7 +603,7 @@ function VehiclesTab({ vehicles, drivers, saveVehicle, deleteVehicle, maintenanc
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
-                  </div>
+                  </>)}</div>
                   <div className="flex flex-col items-end gap-1.5">
                     {v.controleAcessoPortao && (
                       <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-indigo-100 text-indigo-700 px-2 py-0.5">
@@ -803,6 +818,7 @@ function VehicleDialog({ open, onOpenChange, vehicle, drivers, onSave }: {
 function DriversTab({ drivers, vehicles, saveDriver, deleteDriver }: FleetState) {
   const [editing, setEditing] = useState<Driver | null>(null);
   const [open, setOpen] = useState(false);
+  const { canEdit } = usePermissions();
 
   function openNew() {
     setEditing({ id: newId(), nome: "", status: "ativo" });
@@ -817,7 +833,7 @@ function DriversTab({ drivers, vehicles, saveDriver, deleteDriver }: FleetState)
           <h2 className="text-xl font-semibold">Motoristas</h2>
           <p className="text-sm text-muted-foreground">{drivers.length} motorista(s) cadastrado(s)</p>
         </div>
-        <Button onClick={openNew} className="gap-2"><Plus className="size-4" /> Novo motorista</Button>
+        {canEdit && <Button onClick={openNew} className="gap-2"><Plus className="size-4" /> Novo motorista</Button>}
       </div>
 
       {drivers.length === 0 && (
@@ -848,7 +864,7 @@ function DriversTab({ drivers, vehicles, saveDriver, deleteDriver }: FleetState)
               {d.status === "inativo" && d.inativo && (
                 <p className="text-xs text-gray-700">Inativo desde {formatDate(d.inativo.inicio)}{d.inativo.motivo ? ` — ${d.inativo.motivo}` : ""}</p>
               )}
-              <div className="flex gap-1 mt-auto pt-1">
+              <div className="flex gap-1 mt-auto pt-1">{canEdit && (<>
                 <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs" onClick={() => openEdit(d)}>
                   <Pencil className="size-3" /> Editar
                 </Button>
@@ -868,8 +884,8 @@ function DriversTab({ drivers, vehicles, saveDriver, deleteDriver }: FleetState)
                       <AlertDialogAction onClick={() => { deleteDriver(d.id); toast.success("Motorista removido"); }}>Remover</AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
-                </AlertDialog>
-              </div>
+                 </AlertDialog>
+              </>)}</div>
             </div>
           );
         })}
@@ -993,6 +1009,7 @@ function MaintenanceTab({ vehicles, maintenances, saveMaintenance, deleteMainten
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [filterMonth, setFilterMonth] = useState<string>("all");
+  const { canEdit } = usePermissions();
 
   const filtered = useMemo(() => {
     let list = [...maintenances].sort((a, b) => b.data.localeCompare(a.data));
@@ -1046,7 +1063,7 @@ function MaintenanceTab({ vehicles, maintenances, saveMaintenance, deleteMainten
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportCSV} className="gap-2"><Download className="size-4" /> Exportar relatório</Button>
-          <Button onClick={openNew} className="gap-2" disabled={vehicles.length === 0}><Plus className="size-4" /> Nova manutenção</Button>
+          {canEdit && <Button onClick={openNew} className="gap-2" disabled={vehicles.length === 0}><Plus className="size-4" /> Nova manutenção</Button>}
         </div>
       </div>
 
@@ -1106,7 +1123,7 @@ function MaintenanceTab({ vehicles, maintenances, saveMaintenance, deleteMainten
                     <TableCell className="text-right tabular-nums">{m.km.toLocaleString("pt-BR")}</TableCell>
                     <TableCell className="text-right tabular-nums font-medium">{formatBRL(m.valor)}</TableCell>
                     <TableCell>
-                      <div className="flex gap-1 justify-end">
+                      <div className="flex gap-1 justify-end">{canEdit && (<>
                         <Button variant="ghost" size="sm" onClick={() => openEdit(m)}><Pencil className="size-3.5" /></Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild><Button variant="ghost" size="sm" className="text-destructive hover:text-destructive"><Trash2 className="size-3.5" /></Button></AlertDialogTrigger>
@@ -1115,7 +1132,7 @@ function MaintenanceTab({ vehicles, maintenances, saveMaintenance, deleteMainten
                             <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => { deleteMaintenance(m.id); toast.success("Manutenção removida"); }}>Remover</AlertDialogAction></AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
-                      </div>
+                      </>)}</div>
                     </TableCell>
                   </TableRow>
                 );
@@ -1325,6 +1342,7 @@ function HistoryTab({ audit, clearAudit, vehicles, drivers }: FleetState) {
   const [filterTarget, setFilterTarget] = useState<string>("all");
   const [filterMonth, setFilterMonth] = useState<string>("");
   const [query, setQuery] = useState("");
+  const { canEdit } = usePermissions();
 
   const filtered = useMemo(() => {
     let list = [...audit].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
@@ -1378,13 +1396,13 @@ function HistoryTab({ audit, clearAudit, vehicles, drivers }: FleetState) {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportTxt} className="gap-2"><FileText className="size-4" /> Exportar (.txt)</Button>
-          <AlertDialog>
+          {canEdit && (<AlertDialog>
             <AlertDialogTrigger asChild><Button variant="ghost" className="gap-2 text-destructive"><Trash2 className="size-4" /> Limpar</Button></AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader><AlertDialogTitle>Limpar histórico?</AlertDialogTitle><AlertDialogDescription>Isso removerá todos os {audit.length} registros de auditoria.</AlertDialogDescription></AlertDialogHeader>
               <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => { clearAudit(); toast.success("Histórico limpo"); }}>Limpar</AlertDialogAction></AlertDialogFooter>
             </AlertDialogContent>
-          </AlertDialog>
+          </AlertDialog>)}
         </div>
       </div>
 
