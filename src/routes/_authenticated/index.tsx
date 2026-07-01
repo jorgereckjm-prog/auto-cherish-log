@@ -578,7 +578,7 @@ function VehiclesTab({ vehicles, drivers, saveVehicle, deleteVehicle, maintenanc
 
                 {/* Base */}
                 <div className="flex items-end justify-between mt-auto pt-1">
-                  <div className="flex gap-1">
+                  <div className="flex gap-1">{canEdit && (<>
                     <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs" onClick={() => openEdit(v)}>
                       <Pencil className="size-3" /> Editar
                     </Button>
@@ -603,7 +603,7 @@ function VehiclesTab({ vehicles, drivers, saveVehicle, deleteVehicle, maintenanc
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
-                  </div>
+                  </>)}</div>
                   <div className="flex flex-col items-end gap-1.5">
                     {v.controleAcessoPortao && (
                       <span className="inline-flex items-center gap-1 text-[10px] rounded-full bg-indigo-100 text-indigo-700 px-2 py-0.5">
