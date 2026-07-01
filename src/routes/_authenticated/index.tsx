@@ -818,6 +818,7 @@ function VehicleDialog({ open, onOpenChange, vehicle, drivers, onSave }: {
 function DriversTab({ drivers, vehicles, saveDriver, deleteDriver }: FleetState) {
   const [editing, setEditing] = useState<Driver | null>(null);
   const [open, setOpen] = useState(false);
+  const { canEdit } = usePermissions();
 
   function openNew() {
     setEditing({ id: newId(), nome: "", status: "ativo" });
@@ -832,7 +833,7 @@ function DriversTab({ drivers, vehicles, saveDriver, deleteDriver }: FleetState)
           <h2 className="text-xl font-semibold">Motoristas</h2>
           <p className="text-sm text-muted-foreground">{drivers.length} motorista(s) cadastrado(s)</p>
         </div>
-        <Button onClick={openNew} className="gap-2"><Plus className="size-4" /> Novo motorista</Button>
+        {canEdit && <Button onClick={openNew} className="gap-2"><Plus className="size-4" /> Novo motorista</Button>}
       </div>
 
       {drivers.length === 0 && (
@@ -863,7 +864,7 @@ function DriversTab({ drivers, vehicles, saveDriver, deleteDriver }: FleetState)
               {d.status === "inativo" && d.inativo && (
                 <p className="text-xs text-gray-700">Inativo desde {formatDate(d.inativo.inicio)}{d.inativo.motivo ? ` — ${d.inativo.motivo}` : ""}</p>
               )}
-              <div className="flex gap-1 mt-auto pt-1">
+              <div className="flex gap-1 mt-auto pt-1">{canEdit && (<>
                 <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs" onClick={() => openEdit(d)}>
                   <Pencil className="size-3" /> Editar
                 </Button>
