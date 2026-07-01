@@ -884,8 +884,8 @@ function DriversTab({ drivers, vehicles, saveDriver, deleteDriver }: FleetState)
                       <AlertDialogAction onClick={() => { deleteDriver(d.id); toast.success("Motorista removido"); }}>Remover</AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
-                </AlertDialog>
-              </div>
+                 </AlertDialog>
+              </>)}</div>
             </div>
           );
         })}
