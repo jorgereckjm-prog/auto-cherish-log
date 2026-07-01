@@ -92,6 +92,7 @@ import {
   type DriverStatus,
 } from "@/lib/fleet-store";
 import logoAsset from "@/assets/patrimonial-telecom-logo.png.asset.json";
+import { usePermissions } from "@/lib/permissions";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
@@ -109,6 +110,7 @@ type FleetState = ReturnType<typeof useFleet>;
 
 function Index() {
   const fleet = useFleet();
+  const perms = usePermissions();
   const [tab, setTab] = useState<string>("dashboard");
   const [maintFilterVehicle, setMaintFilterVehicle] = useState<string>("all");
 
