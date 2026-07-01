@@ -1342,6 +1342,7 @@ function HistoryTab({ audit, clearAudit, vehicles, drivers }: FleetState) {
   const [filterTarget, setFilterTarget] = useState<string>("all");
   const [filterMonth, setFilterMonth] = useState<string>("");
   const [query, setQuery] = useState("");
+  const { canEdit } = usePermissions();
 
   const filtered = useMemo(() => {
     let list = [...audit].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
@@ -1395,13 +1396,13 @@ function HistoryTab({ audit, clearAudit, vehicles, drivers }: FleetState) {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportTxt} className="gap-2"><FileText className="size-4" /> Exportar (.txt)</Button>
-          <AlertDialog>
+          {canEdit && (<AlertDialog>
             <AlertDialogTrigger asChild><Button variant="ghost" className="gap-2 text-destructive"><Trash2 className="size-4" /> Limpar</Button></AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader><AlertDialogTitle>Limpar histórico?</AlertDialogTitle><AlertDialogDescription>Isso removerá todos os {audit.length} registros de auditoria.</AlertDialogDescription></AlertDialogHeader>
               <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => { clearAudit(); toast.success("Histórico limpo"); }}>Limpar</AlertDialogAction></AlertDialogFooter>
             </AlertDialogContent>
-          </AlertDialog>
+          </AlertDialog>)}
         </div>
       </div>
 
