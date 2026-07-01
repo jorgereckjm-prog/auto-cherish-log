@@ -45,7 +45,7 @@ const createSchema = z.object({
 
 export const createUserFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((d: unknown) => createSchema.parse(d))
+  .inputValidator((d: unknown) => createSchema.parse(d))
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -69,7 +69,7 @@ const permSchema = z.object({ userId: z.string().uuid(), canEdit: z.boolean() })
 
 export const setUserPermissionFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((d: unknown) => permSchema.parse(d))
+  .inputValidator((d: unknown) => permSchema.parse(d))
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -82,7 +82,7 @@ export const setUserPermissionFn = createServerFn({ method: "POST" })
 
 export const deleteUserFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((d: unknown) => z.object({ userId: z.string().uuid() }).parse(d))
+  .inputValidator((d: unknown) => z.object({ userId: z.string().uuid() }).parse(d))
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
     if (data.userId === context.userId) throw new Error("Você não pode remover a si mesmo");
