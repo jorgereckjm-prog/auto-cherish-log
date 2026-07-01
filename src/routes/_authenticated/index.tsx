@@ -1009,6 +1009,7 @@ function MaintenanceTab({ vehicles, maintenances, saveMaintenance, deleteMainten
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [filterMonth, setFilterMonth] = useState<string>("all");
+  const { canEdit } = usePermissions();
 
   const filtered = useMemo(() => {
     let list = [...maintenances].sort((a, b) => b.data.localeCompare(a.data));
@@ -1062,7 +1063,7 @@ function MaintenanceTab({ vehicles, maintenances, saveMaintenance, deleteMainten
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportCSV} className="gap-2"><Download className="size-4" /> Exportar relatório</Button>
-          <Button onClick={openNew} className="gap-2" disabled={vehicles.length === 0}><Plus className="size-4" /> Nova manutenção</Button>
+          {canEdit && <Button onClick={openNew} className="gap-2" disabled={vehicles.length === 0}><Plus className="size-4" /> Nova manutenção</Button>}
         </div>
       </div>
 
@@ -1122,7 +1123,7 @@ function MaintenanceTab({ vehicles, maintenances, saveMaintenance, deleteMainten
                     <TableCell className="text-right tabular-nums">{m.km.toLocaleString("pt-BR")}</TableCell>
                     <TableCell className="text-right tabular-nums font-medium">{formatBRL(m.valor)}</TableCell>
                     <TableCell>
-                      <div className="flex gap-1 justify-end">
+                      <div className="flex gap-1 justify-end">{canEdit && (<>
                         <Button variant="ghost" size="sm" onClick={() => openEdit(m)}><Pencil className="size-3.5" /></Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild><Button variant="ghost" size="sm" className="text-destructive hover:text-destructive"><Trash2 className="size-3.5" /></Button></AlertDialogTrigger>
@@ -1131,7 +1132,7 @@ function MaintenanceTab({ vehicles, maintenances, saveMaintenance, deleteMainten
                             <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => { deleteMaintenance(m.id); toast.success("Manutenção removida"); }}>Remover</AlertDialogAction></AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
-                      </div>
+                      </>)}</div>
                     </TableCell>
                   </TableRow>
                 );
