@@ -144,6 +144,14 @@ function Index() {
               placeholder="Operador"
               className="h-8 w-40 text-sm"
             />
+            {!perms.canEdit && !perms.loading && (
+              <Badge variant="secondary" className="gap-1 text-xs"><Eye className="size-3" /> Visualização</Badge>
+            )}
+            <Link to="/configuracoes" title="Configurações">
+              <Button variant="ghost" size="icon" className="size-8">
+                <Settings className="size-4" />
+              </Button>
+            </Link>
           </div>
         </div>
       </header>
