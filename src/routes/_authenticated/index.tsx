@@ -650,6 +650,13 @@ function VehiclesTab({ vehicles, drivers, saveVehicle, deleteVehicle, maintenanc
         drivers={drivers}
         onSave={(v) => { saveVehicle(v); setOpen(false); toast.success("Veículo salvo"); }}
       />
+      <MaintenanceDialog
+        open={maintOpen}
+        onOpenChange={setMaintOpen}
+        maintenance={maintDraft}
+        vehicles={vehicles}
+        onSave={(m) => { saveMaintenance(m); setMaintOpen(false); toast.success("Manutenção registrada"); }}
+      />
     </div>
   );
 }
