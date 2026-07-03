@@ -124,6 +124,45 @@ function appendAudit(entry: Omit<AuditLog, "id" | "timestamp"> & { timestamp?: s
   writeLS(AUDIT_KEY, list);
 }
 
+function autoReactivateDrivers() {
+  if (typeof window === "undefined") return;
+  const drivers = readLS<Driver[]>(DRIVERS_KEY, []);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let changed = false;
+  for (const d of drivers) {
+    if (d.status === "ferias" && d.ferias?.fim) {
+      const fim = new Date(d.ferias.fim + "T00:00:00");
+      if (fim < today) {
+        appendAudit({
+          entidade: "motorista", entidadeId: d.id, entidadeNome: d.nome,
+          acao: "Férias finalizadas (automático)",
+          antes: "ferias", depois: "ativo",
+          responsavel: getOperator() || "sistema",
+        });
+        d.status = "ativo";
+        d.ferias = undefined;
+        changed = true;
+      }
+    }
+    if (d.status === "folga" && d.folga?.fim) {
+      const fim = new Date(d.folga.fim + "T00:00:00");
+      if (fim < today) {
+        appendAudit({
+          entidade: "motorista", entidadeId: d.id, entidadeNome: d.nome,
+          acao: "Folga finalizada (automático)",
+          antes: "folga", depois: "ativo",
+          responsavel: getOperator() || "sistema",
+        });
+        d.status = "ativo";
+        d.folga = undefined;
+        changed = true;
+      }
+    }
+  }
+  if (changed) writeLS(DRIVERS_KEY, drivers);
+}
+
 export function getOperator(): string {
   if (typeof window === "undefined") return "";
   return window.localStorage.getItem(OPERATOR_KEY) ?? "";
@@ -155,6 +194,8 @@ export function useFleet() {
     if (typeof window !== "undefined" && !window.localStorage.getItem(VEHICLES_KEY)) {
       writeLS(VEHICLES_KEY, seedVehicles);
     }
+    // Auto-reativa motoristas cujas férias/folga já terminaram
+    autoReactivateDrivers();
     refresh();
     setHydrated(true);
     const l = () => refresh();
