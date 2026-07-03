@@ -155,6 +155,8 @@ export function useFleet() {
     if (typeof window !== "undefined" && !window.localStorage.getItem(VEHICLES_KEY)) {
       writeLS(VEHICLES_KEY, seedVehicles);
     }
+    // Auto-reativa motoristas cujas férias/folga já terminaram
+    autoReactivateDrivers();
     refresh();
     setHydrated(true);
     const l = () => refresh();
