@@ -499,9 +499,11 @@ function QuickDriverSelect({ vehicle, drivers, onChange }: { vehicle: Vehicle; d
   );
 }
 
-function VehiclesTab({ vehicles, drivers, saveVehicle, deleteVehicle, maintenances, onVehicleClick }: FleetState & { onVehicleClick: (id: string) => void }) {
+function VehiclesTab({ vehicles, drivers, saveVehicle, deleteVehicle, maintenances, saveMaintenance, onVehicleClick }: FleetState & { onVehicleClick: (id: string) => void }) {
   const [editing, setEditing] = useState<Vehicle | null>(null);
   const [open, setOpen] = useState(false);
+  const [maintOpen, setMaintOpen] = useState(false);
+  const [maintDraft, setMaintDraft] = useState<Maintenance | null>(null);
   const { canEdit } = usePermissions();
 
   function openNew() {
@@ -563,6 +565,19 @@ function VehiclesTab({ vehicles, drivers, saveVehicle, deleteVehicle, maintenanc
                           if (status === "vendido" && !v.venda) next.venda = { data: today };
                           saveVehicle(next);
                           toast.success("Status atualizado");
+                          if (status === "manutencao" && v.status !== "manutencao") {
+                            setMaintDraft({
+                              id: newId(),
+                              vehicleId: v.id,
+                              data: today,
+                              tipo: "Corretiva",
+                              descricao: "",
+                              valor: 0,
+                              km: v.kmAtual,
+                              oficina: "",
+                            });
+                            setMaintOpen(true);
+                          }
                         }}
                       />
                     </div>
