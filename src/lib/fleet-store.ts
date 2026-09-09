@@ -447,6 +447,58 @@ export function useFleet() {
     emit();
   }, []);
 
+  const saveSchedule = useCallback((s: ScheduledMaintenance) => {
+    const list = readLS<ScheduledMaintenance[]>(SCHED_KEY, []);
+    const idx = list.findIndex((x) => x.id === s.id);
+    const prev = idx >= 0 ? list[idx] : undefined;
+    if (idx >= 0) list[idx] = s;
+    else list.push({ ...s, createdAt: new Date().toISOString() });
+    writeLS(SCHED_KEY, list);
+    const vName = readLS<Vehicle[]>(VEHICLES_KEY, []).find((v) => v.id === s.vehicleId)?.nome ?? "—";
+    appendAudit({
+      entidade: "veiculo", entidadeId: s.vehicleId, entidadeNome: vName,
+      acao: prev ? "Manutenção programada editada" : "Manutenção programada criada",
+      depois: `${s.titulo} · próx. ${(s.ultimaKm + s.intervaloKm).toLocaleString("pt-BR")} km`,
+      responsavel: getOperator(),
+    });
+    emit();
+  }, []);
+
+  const deleteSchedule = useCallback((id: string) => {
+    const all = readLS<ScheduledMaintenance[]>(SCHED_KEY, []);
+    const removed = all.find((s) => s.id === id);
+    writeLS(SCHED_KEY, all.filter((s) => s.id !== id));
+    if (removed) {
+      const vName = readLS<Vehicle[]>(VEHICLES_KEY, []).find((v) => v.id === removed.vehicleId)?.nome ?? "—";
+      appendAudit({
+        entidade: "veiculo", entidadeId: removed.vehicleId, entidadeNome: vName,
+        acao: "Manutenção programada removida", antes: removed.titulo, responsavel: getOperator(),
+      });
+    }
+    emit();
+  }, []);
+
+  /** Marca como realizada: reprograma a partir do novo KM (ou arquiva) */
+  const completeSchedule = useCallback((id: string, km: number, data: string, reprogramar: boolean) => {
+    const list = readLS<ScheduledMaintenance[]>(SCHED_KEY, []);
+    const s = list.find((x) => x.id === id);
+    if (!s) return;
+    const vName = readLS<Vehicle[]>(VEHICLES_KEY, []).find((v) => v.id === s.vehicleId)?.nome ?? "—";
+    appendAudit({
+      entidade: "veiculo", entidadeId: s.vehicleId, entidadeNome: vName,
+      acao: "Manutenção programada realizada",
+      antes: `${s.titulo} · ${(s.ultimaKm + s.intervaloKm).toLocaleString("pt-BR")} km`,
+      depois: reprogramar ? `próx. ${(km + s.intervaloKm).toLocaleString("pt-BR")} km` : "arquivada",
+      responsavel: getOperator(),
+    });
+    s.ultimaKm = km;
+    s.ultimaData = data;
+    s.proximaData = undefined;
+    s.realizada = !reprogramar;
+    writeLS(SCHED_KEY, list);
+    emit();
+  }, []);
+
   const clearAudit = useCallback(() => {
     writeLS(AUDIT_KEY, []);
     emit();
@@ -459,15 +511,20 @@ export function useFleet() {
     drivers,
     audit,
     operator,
+    schedules,
     saveVehicle,
     deleteVehicle,
     saveDriver,
     deleteDriver,
     saveMaintenance,
     deleteMaintenance,
+    saveSchedule,
+    deleteSchedule,
+    completeSchedule,
     setOperator,
     clearAudit,
   };
+
 }
 
 export function newId() {
