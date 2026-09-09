@@ -77,11 +77,30 @@ export type Maintenance = {
   oficina?: string;
 };
 
+/** Manutenção programada (lembrete por KM/data) */
+export type ScheduledMaintenance = {
+  id: string;
+  vehicleId: string;
+  titulo: string;
+  descricao?: string;
+  ultimaData?: string; // YYYY-MM-DD
+  ultimaKm: number;
+  intervaloKm: number;
+  alertaKm: number;
+  proximaData?: string; // YYYY-MM-DD (opcional)
+  realizada?: boolean; // arquivada / concluída sem reprogramar
+  createdAt?: string;
+};
+
+export type ScheduledLevel = "programada" | "proxima" | "vencida" | "realizada";
+
 const VEHICLES_KEY = "fleet.vehicles.v1";
 const MAINT_KEY = "fleet.maintenances.v1";
 const DRIVERS_KEY = "fleet.drivers.v1";
 const AUDIT_KEY = "fleet.audit.v1";
 const OPERATOR_KEY = "fleet.operator.v1";
+const SCHED_KEY = "fleet.scheduled.v1";
+
 
 const seedVehicles: Vehicle[] = [
   { id: "v1", nome: "Veículo 01", placa: "ABC-1A23", modelo: "Fiat Strada", ano: "2022", kmAtual: 45000, status: "ativo", controleAcessoPortao: false },
@@ -178,6 +197,7 @@ export function useFleet() {
   const [maintenances, setMaintenances] = useState<Maintenance[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [audit, setAudit] = useState<AuditLog[]>([]);
+  const [schedules, setSchedules] = useState<ScheduledMaintenance[]>([]);
   const [operator, setOperatorState] = useState<string>("");
   const [hydrated, setHydrated] = useState(false);
 
@@ -186,6 +206,7 @@ export function useFleet() {
     setMaintenances(readLS<Maintenance[]>(MAINT_KEY, []));
     setDrivers(readLS<Driver[]>(DRIVERS_KEY, []));
     setAudit(readLS<AuditLog[]>(AUDIT_KEY, []));
+    setSchedules(readLS<ScheduledMaintenance[]>(SCHED_KEY, []));
     setOperatorState(getOperator());
   }, []);
 
@@ -428,6 +449,58 @@ export function useFleet() {
     emit();
   }, []);
 
+  const saveSchedule = useCallback((s: ScheduledMaintenance) => {
+    const list = readLS<ScheduledMaintenance[]>(SCHED_KEY, []);
+    const idx = list.findIndex((x) => x.id === s.id);
+    const prev = idx >= 0 ? list[idx] : undefined;
+    if (idx >= 0) list[idx] = s;
+    else list.push({ ...s, createdAt: new Date().toISOString() });
+    writeLS(SCHED_KEY, list);
+    const vName = readLS<Vehicle[]>(VEHICLES_KEY, []).find((v) => v.id === s.vehicleId)?.nome ?? "—";
+    appendAudit({
+      entidade: "veiculo", entidadeId: s.vehicleId, entidadeNome: vName,
+      acao: prev ? "Manutenção programada editada" : "Manutenção programada criada",
+      depois: `${s.titulo} · próx. ${(s.ultimaKm + s.intervaloKm).toLocaleString("pt-BR")} km`,
+      responsavel: getOperator(),
+    });
+    emit();
+  }, []);
+
+  const deleteSchedule = useCallback((id: string) => {
+    const all = readLS<ScheduledMaintenance[]>(SCHED_KEY, []);
+    const removed = all.find((s) => s.id === id);
+    writeLS(SCHED_KEY, all.filter((s) => s.id !== id));
+    if (removed) {
+      const vName = readLS<Vehicle[]>(VEHICLES_KEY, []).find((v) => v.id === removed.vehicleId)?.nome ?? "—";
+      appendAudit({
+        entidade: "veiculo", entidadeId: removed.vehicleId, entidadeNome: vName,
+        acao: "Manutenção programada removida", antes: removed.titulo, responsavel: getOperator(),
+      });
+    }
+    emit();
+  }, []);
+
+  /** Marca como realizada: reprograma a partir do novo KM (ou arquiva) */
+  const completeSchedule = useCallback((id: string, km: number, data: string, reprogramar: boolean) => {
+    const list = readLS<ScheduledMaintenance[]>(SCHED_KEY, []);
+    const s = list.find((x) => x.id === id);
+    if (!s) return;
+    const vName = readLS<Vehicle[]>(VEHICLES_KEY, []).find((v) => v.id === s.vehicleId)?.nome ?? "—";
+    appendAudit({
+      entidade: "veiculo", entidadeId: s.vehicleId, entidadeNome: vName,
+      acao: "Manutenção programada realizada",
+      antes: `${s.titulo} · ${(s.ultimaKm + s.intervaloKm).toLocaleString("pt-BR")} km`,
+      depois: reprogramar ? `próx. ${(km + s.intervaloKm).toLocaleString("pt-BR")} km` : "arquivada",
+      responsavel: getOperator(),
+    });
+    s.ultimaKm = km;
+    s.ultimaData = data;
+    s.proximaData = undefined;
+    s.realizada = !reprogramar;
+    writeLS(SCHED_KEY, list);
+    emit();
+  }, []);
+
   const clearAudit = useCallback(() => {
     writeLS(AUDIT_KEY, []);
     emit();
@@ -440,15 +513,20 @@ export function useFleet() {
     drivers,
     audit,
     operator,
+    schedules,
     saveVehicle,
     deleteVehicle,
     saveDriver,
     deleteDriver,
     saveMaintenance,
     deleteMaintenance,
+    saveSchedule,
+    deleteSchedule,
+    completeSchedule,
     setOperator,
     clearAudit,
   };
+
 }
 
 export function newId() {
@@ -510,3 +588,61 @@ export function daysUntil(iso: string): number {
   const d = new Date(iso + "T00:00:00");
   return Math.round((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
+/* ============ MANUTENÇÃO PROGRAMADA — cálculos ============ */
+
+export type ScheduleComputed = {
+  proximaKm: number;
+  restanteKm: number;      // negativo = atrasada
+  progresso: number;       // 0..1 (pode passar de 1)
+  level: ScheduledLevel;
+  diasParaData?: number;   // se proximaData definida
+};
+
+export function computeSchedule(s: ScheduledMaintenance, kmAtual: number): ScheduleComputed {
+  const proximaKm = s.ultimaKm + s.intervaloKm;
+  const restanteKm = proximaKm - kmAtual;
+  const span = Math.max(1, s.intervaloKm);
+  const progresso = Math.max(0, (kmAtual - s.ultimaKm) / span);
+
+  let level: ScheduledLevel;
+  if (s.realizada) {
+    level = "realizada";
+  } else if (restanteKm <= 0) {
+    level = "vencida";
+  } else if (restanteKm <= (s.alertaKm || 0)) {
+    level = "proxima";
+  } else {
+    level = "programada";
+  }
+
+  let diasParaData: number | undefined;
+  if (s.proximaData) {
+    diasParaData = daysUntil(s.proximaData);
+    if (!s.realizada) {
+      if (diasParaData < 0) level = "vencida";
+      else if (diasParaData <= 7 && level === "programada") level = "proxima";
+    }
+  }
+
+  return { proximaKm, restanteKm, progresso, level, diasParaData };
+}
+
+export const scheduleLevelInfo: Record<ScheduledLevel, { label: string; color: string; bg: string; dot: string; bar: string }> = {
+  programada: { label: "Programada", color: "text-emerald-700", bg: "bg-emerald-100", dot: "bg-emerald-500", bar: "bg-emerald-500" },
+  proxima:    { label: "Próxima",    color: "text-amber-700",   bg: "bg-amber-100",   dot: "bg-amber-500",   bar: "bg-amber-500" },
+  vencida:    { label: "Vencida",    color: "text-red-700",     bg: "bg-red-100",     dot: "bg-red-500",     bar: "bg-red-500" },
+  realizada:  { label: "Realizada",  color: "text-blue-700",    bg: "bg-blue-100",    dot: "bg-blue-500",    bar: "bg-blue-500" },
+};
+
+export const servicosSugeridos = [
+  "Troca de óleo",
+  "Troca de filtro",
+  "Troca de correia dentada",
+  "Troca de pastilhas de freio",
+  "Alinhamento",
+  "Balanceamento",
+  "Revisão",
+  "Troca de fluido de freio",
+  "Troca de pneus",
+  "Outros",
+];
