@@ -588,3 +588,61 @@ export function daysUntil(iso: string): number {
   const d = new Date(iso + "T00:00:00");
   return Math.round((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
+/* ============ MANUTENÇÃO PROGRAMADA — cálculos ============ */
+
+export type ScheduleComputed = {
+  proximaKm: number;
+  restanteKm: number;      // negativo = atrasada
+  progresso: number;       // 0..1 (pode passar de 1)
+  level: ScheduledLevel;
+  diasParaData?: number;   // se proximaData definida
+};
+
+export function computeSchedule(s: ScheduledMaintenance, kmAtual: number): ScheduleComputed {
+  const proximaKm = s.ultimaKm + s.intervaloKm;
+  const restanteKm = proximaKm - kmAtual;
+  const span = Math.max(1, s.intervaloKm);
+  const progresso = Math.max(0, (kmAtual - s.ultimaKm) / span);
+
+  let level: ScheduledLevel;
+  if (s.realizada) {
+    level = "realizada";
+  } else if (restanteKm <= 0) {
+    level = "vencida";
+  } else if (restanteKm <= (s.alertaKm || 0)) {
+    level = "proxima";
+  } else {
+    level = "programada";
+  }
+
+  let diasParaData: number | undefined;
+  if (s.proximaData) {
+    diasParaData = daysUntil(s.proximaData);
+    if (!s.realizada) {
+      if (diasParaData < 0) level = "vencida";
+      else if (diasParaData <= 7 && level === "programada") level = "proxima";
+    }
+  }
+
+  return { proximaKm, restanteKm, progresso, level, diasParaData };
+}
+
+export const scheduleLevelInfo: Record<ScheduledLevel, { label: string; color: string; bg: string; dot: string; bar: string }> = {
+  programada: { label: "Programada", color: "text-emerald-700", bg: "bg-emerald-100", dot: "bg-emerald-500", bar: "bg-emerald-500" },
+  proxima:    { label: "Próxima",    color: "text-amber-700",   bg: "bg-amber-100",   dot: "bg-amber-500",   bar: "bg-amber-500" },
+  vencida:    { label: "Vencida",    color: "text-red-700",     bg: "bg-red-100",     dot: "bg-red-500",     bar: "bg-red-500" },
+  realizada:  { label: "Realizada",  color: "text-blue-700",    bg: "bg-blue-100",    dot: "bg-blue-500",    bar: "bg-blue-500" },
+};
+
+export const servicosSugeridos = [
+  "Troca de óleo",
+  "Troca de filtro",
+  "Troca de correia dentada",
+  "Troca de pastilhas de freio",
+  "Alinhamento",
+  "Balanceamento",
+  "Revisão",
+  "Troca de fluido de freio",
+  "Troca de pneus",
+  "Outros",
+];
