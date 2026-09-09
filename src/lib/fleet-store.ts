@@ -197,6 +197,7 @@ export function useFleet() {
   const [maintenances, setMaintenances] = useState<Maintenance[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [audit, setAudit] = useState<AuditLog[]>([]);
+  const [schedules, setSchedules] = useState<ScheduledMaintenance[]>([]);
   const [operator, setOperatorState] = useState<string>("");
   const [hydrated, setHydrated] = useState(false);
 
@@ -205,6 +206,7 @@ export function useFleet() {
     setMaintenances(readLS<Maintenance[]>(MAINT_KEY, []));
     setDrivers(readLS<Driver[]>(DRIVERS_KEY, []));
     setAudit(readLS<AuditLog[]>(AUDIT_KEY, []));
+    setSchedules(readLS<ScheduledMaintenance[]>(SCHED_KEY, []));
     setOperatorState(getOperator());
   }, []);
 
