@@ -77,11 +77,30 @@ export type Maintenance = {
   oficina?: string;
 };
 
+/** Manutenção programada (lembrete por KM/data) */
+export type ScheduledMaintenance = {
+  id: string;
+  vehicleId: string;
+  titulo: string;
+  descricao?: string;
+  ultimaData?: string; // YYYY-MM-DD
+  ultimaKm: number;
+  intervaloKm: number;
+  alertaKm: number;
+  proximaData?: string; // YYYY-MM-DD (opcional)
+  realizada?: boolean; // arquivada / concluída sem reprogramar
+  createdAt?: string;
+};
+
+export type ScheduledLevel = "programada" | "proxima" | "vencida" | "realizada";
+
 const VEHICLES_KEY = "fleet.vehicles.v1";
 const MAINT_KEY = "fleet.maintenances.v1";
 const DRIVERS_KEY = "fleet.drivers.v1";
 const AUDIT_KEY = "fleet.audit.v1";
 const OPERATOR_KEY = "fleet.operator.v1";
+const SCHED_KEY = "fleet.scheduled.v1";
+
 
 const seedVehicles: Vehicle[] = [
   { id: "v1", nome: "Veículo 01", placa: "ABC-1A23", modelo: "Fiat Strada", ano: "2022", kmAtual: 45000, status: "ativo", controleAcessoPortao: false },
