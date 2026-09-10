@@ -344,20 +344,32 @@ function Dashboard({ vehicles, maintenances, drivers, schedules, onVehicleClick,
       </div>
 
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Gastos por veículo</CardTitle>
+        <CardHeader className="pb-2 cursor-pointer select-none" onClick={() => setShowCosts((s) => !s)}>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Gastos por veículo</CardTitle>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setShowCosts((s) => !s); }}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label={showCosts ? "Minimizar" : "Expandir"}
+            >
+              {showCosts ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+            </button>
+          </div>
         </CardHeader>
-        <CardContent className="h-48">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={porVeiculo}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-              <XAxis dataKey="placa" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip formatter={(v: number) => formatBRL(v)} contentStyle={{ borderRadius: 8, border: "1px solid var(--border)" }} />
-              <Bar dataKey="gasto" fill="var(--primary)" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
+        {showCosts && (
+          <CardContent className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={porVeiculo}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="placa" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip formatter={(v: number) => formatBRL(v)} contentStyle={{ borderRadius: 8, border: "1px solid var(--border)" }} />
+                <Bar dataKey="gasto" fill="var(--primary)" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        )}
       </Card>
 
       <Card>
