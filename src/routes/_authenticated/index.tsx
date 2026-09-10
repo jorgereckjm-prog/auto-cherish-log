@@ -12,6 +12,7 @@ import {
   Gauge,
   DollarSign,
   Calendar as CalendarIcon,
+  CalendarClock,
   Search,
   Download,
   Users,
@@ -91,6 +92,8 @@ import {
   type VehicleStatus,
   type DriverStatus,
 } from "@/lib/fleet-store";
+import type { ScheduledMaintenance } from "@/lib/fleet-store";
+import { ScheduledTab, ScheduleAlertsCard } from "@/components/fleet/ScheduledTab";
 import logoAsset from "@/assets/patrimonial-telecom-logo.png.asset.json";
 import { usePermissions } from "@/lib/permissions";
 
@@ -113,11 +116,38 @@ function Index() {
   const perms = usePermissions();
   const [tab, setTab] = useState<string>("dashboard");
   const [maintFilterVehicle, setMaintFilterVehicle] = useState<string>("all");
+  const [schedFilterVehicle, setSchedFilterVehicle] = useState<string>("all");
+  const [realizarOpen, setRealizarOpen] = useState(false);
+  const [realizarDraft, setRealizarDraft] = useState<Maintenance | null>(null);
+  const [realizarSched, setRealizarSched] = useState<ScheduledMaintenance | null>(null);
 
   function goToVehicleMaintenance(vehicleId: string) {
     setMaintFilterVehicle(vehicleId);
     setTab("maintenance");
   }
+
+  function goToScheduled(vehicleId?: string) {
+    setSchedFilterVehicle(vehicleId ?? "all");
+    setTab("scheduled");
+  }
+
+  /** Abre a caixa de manutenção pré-preenchida a partir de um lembrete programado */
+  function startRealizar(s: ScheduledMaintenance) {
+    const v = fleet.vehicles.find((x) => x.id === s.vehicleId);
+    setRealizarSched(s);
+    setRealizarDraft({
+      id: newId(),
+      vehicleId: s.vehicleId,
+      data: new Date().toISOString().slice(0, 10),
+      tipo: "Preventiva",
+      descricao: s.titulo + (s.descricao ? ` — ${s.descricao}` : ""),
+      valor: 0,
+      km: v?.kmAtual ?? s.ultimaKm,
+      oficina: "",
+    });
+    setRealizarOpen(true);
+  }
+
 
   if (!fleet.hydrated) {
     return <div className="min-h-screen bg-background" />;
@@ -158,17 +188,18 @@ function Index() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         <Tabs value={tab} onValueChange={setTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6">
+          <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7">
             <TabsTrigger value="dashboard" className="gap-1.5"><LayoutDashboard className="size-4" /><span className="hidden sm:inline">Dashboard</span></TabsTrigger>
             <TabsTrigger value="vehicles" className="gap-1.5"><Car className="size-4" /><span className="hidden sm:inline">Veículos</span></TabsTrigger>
             <TabsTrigger value="drivers" className="gap-1.5"><Users className="size-4" /><span className="hidden sm:inline">Motoristas</span></TabsTrigger>
             <TabsTrigger value="maintenance" className="gap-1.5"><Wrench className="size-4" /><span className="hidden sm:inline">Manutenções</span></TabsTrigger>
+            <TabsTrigger value="scheduled" className="gap-1.5"><CalendarClock className="size-4" /><span className="hidden sm:inline">Programadas</span></TabsTrigger>
             <TabsTrigger value="calendar" className="gap-1.5"><CalendarIcon className="size-4" /><span className="hidden sm:inline">Calendário</span></TabsTrigger>
             <TabsTrigger value="history" className="gap-1.5"><HistoryIcon className="size-4" /><span className="hidden sm:inline">Histórico</span></TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard">
-            <Dashboard {...fleet} onVehicleClick={goToVehicleMaintenance} />
+            <Dashboard {...fleet} onVehicleClick={goToVehicleMaintenance} onOpenScheduled={goToScheduled} />
           </TabsContent>
           <TabsContent value="vehicles">
             <VehiclesTab {...fleet} onVehicleClick={goToVehicleMaintenance} />
@@ -183,6 +214,17 @@ function Index() {
               setFilterVehicle={setMaintFilterVehicle}
             />
           </TabsContent>
+          <TabsContent value="scheduled">
+            <ScheduledTab
+              vehicles={fleet.vehicles}
+              schedules={fleet.schedules}
+              saveSchedule={fleet.saveSchedule}
+              deleteSchedule={fleet.deleteSchedule}
+              onRealizar={startRealizar}
+              filterVehicle={schedFilterVehicle}
+              setFilterVehicle={setSchedFilterVehicle}
+            />
+          </TabsContent>
           <TabsContent value="calendar">
             <CalendarTab {...fleet} />
           </TabsContent>
@@ -191,7 +233,22 @@ function Index() {
           </TabsContent>
         </Tabs>
       </main>
+
+      <MaintenanceDialog
+        open={realizarOpen}
+        onOpenChange={setRealizarOpen}
+        maintenance={realizarDraft}
+        vehicles={fleet.vehicles}
+        onSave={(m) => {
+          fleet.saveMaintenance(m);
+          if (realizarSched) fleet.completeSchedule(realizarSched.id, m.km, m.data, true);
+          setRealizarOpen(false);
+          setRealizarSched(null);
+          toast.success("Manutenção registrada e próxima reprogramada");
+        }}
+      />
     </div>
+
   );
 }
 
@@ -220,7 +277,7 @@ function DriverStatusBadge({ status }: { status?: DriverStatus }) {
 
 /* ===================== DASHBOARD ===================== */
 
-function Dashboard({ vehicles, maintenances, drivers, onVehicleClick }: FleetState & { onVehicleClick: (id: string) => void }) {
+function Dashboard({ vehicles, maintenances, drivers, schedules, onVehicleClick, onOpenScheduled }: FleetState & { onVehicleClick: (id: string) => void; onOpenScheduled: (id?: string) => void }) {
   const totalGasto = maintenances.reduce((s, m) => s + m.valor, 0);
   const gastoMes = useMemo(() => {
     const now = new Date();
@@ -290,6 +347,8 @@ function Dashboard({ vehicles, maintenances, drivers, onVehicleClick }: FleetSta
 
   return (
     <div className="space-y-6">
+      <ScheduleAlertsCard vehicles={vehicles} schedules={schedules} onOpen={onOpenScheduled} />
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard label="Veículos" value={vehicles.length.toString()} icon={<Car className="size-5" />} />
         <StatCard label="Motoristas" value={drivers.length.toString()} icon={<Users className="size-5" />} />
