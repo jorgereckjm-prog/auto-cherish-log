@@ -21,6 +21,8 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   FileText,
   User,
   Settings,
@@ -278,6 +280,7 @@ function DriverStatusBadge({ status }: { status?: DriverStatus }) {
 /* ===================== DASHBOARD ===================== */
 
 function Dashboard({ vehicles, maintenances, drivers, schedules, onVehicleClick, onOpenScheduled }: FleetState & { onVehicleClick: (id: string) => void; onOpenScheduled: (id?: string) => void }) {
+  const [showCosts, setShowCosts] = useState(true);
   const totalGasto = maintenances.reduce((s, m) => s + m.valor, 0);
   const gastoMes = useMemo(() => {
     const now = new Date();
@@ -288,22 +291,6 @@ function Dashboard({ vehicles, maintenances, drivers, schedules, onVehicleClick,
       })
       .reduce((s, m) => s + m.valor, 0);
   }, [maintenances]);
-
-  const vStats = useMemo(() => {
-    const c = { ativo: 0, manutencao: 0, indisponivel: 0, emprestado: 0, vendido: 0 };
-    vehicles.forEach((v) => { c[v.status ?? "ativo"]++; });
-    return c;
-  }, [vehicles]);
-
-  const dStats = useMemo(() => {
-    const c = { ativo: 0, inativo: 0, ferias: 0, folga: 0 };
-    drivers.forEach((d) => { c[d.status ?? "ativo"]++; });
-    return c;
-  }, [drivers]);
-
-  const comPortao = vehicles.filter((v) => v.controleAcessoPortao).length;
-  const semMotorista = vehicles.filter((v) => v.status !== "vendido" && !v.motoristaId).length;
-  const motoristaSemVeic = drivers.filter((d) => (d.status ?? "ativo") === "ativo" && !d.veiculoId).length;
 
   const alerts = useMemo(() => {
     const out: { type: "warn" | "info"; text: string }[] = [];
@@ -357,20 +344,32 @@ function Dashboard({ vehicles, maintenances, drivers, schedules, onVehicleClick,
       </div>
 
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Gastos por veículo</CardTitle>
+        <CardHeader className="pb-2 cursor-pointer select-none" onClick={() => setShowCosts((s) => !s)}>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Gastos por veículo</CardTitle>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setShowCosts((s) => !s); }}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label={showCosts ? "Minimizar" : "Expandir"}
+            >
+              {showCosts ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+            </button>
+          </div>
         </CardHeader>
-        <CardContent className="h-48">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={porVeiculo}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-              <XAxis dataKey="placa" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip formatter={(v: number) => formatBRL(v)} contentStyle={{ borderRadius: 8, border: "1px solid var(--border)" }} />
-              <Bar dataKey="gasto" fill="var(--primary)" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
+        {showCosts && (
+          <CardContent className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={porVeiculo}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="placa" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip formatter={(v: number) => formatBRL(v)} contentStyle={{ borderRadius: 8, border: "1px solid var(--border)" }} />
+                <Bar dataKey="gasto" fill="var(--primary)" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        )}
       </Card>
 
       <Card>
