@@ -187,17 +187,18 @@ function Index() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         <Tabs value={tab} onValueChange={setTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6">
+          <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7">
             <TabsTrigger value="dashboard" className="gap-1.5"><LayoutDashboard className="size-4" /><span className="hidden sm:inline">Dashboard</span></TabsTrigger>
             <TabsTrigger value="vehicles" className="gap-1.5"><Car className="size-4" /><span className="hidden sm:inline">Veículos</span></TabsTrigger>
             <TabsTrigger value="drivers" className="gap-1.5"><Users className="size-4" /><span className="hidden sm:inline">Motoristas</span></TabsTrigger>
             <TabsTrigger value="maintenance" className="gap-1.5"><Wrench className="size-4" /><span className="hidden sm:inline">Manutenções</span></TabsTrigger>
+            <TabsTrigger value="scheduled" className="gap-1.5"><CalendarClock className="size-4" /><span className="hidden sm:inline">Programadas</span></TabsTrigger>
             <TabsTrigger value="calendar" className="gap-1.5"><CalendarIcon className="size-4" /><span className="hidden sm:inline">Calendário</span></TabsTrigger>
             <TabsTrigger value="history" className="gap-1.5"><HistoryIcon className="size-4" /><span className="hidden sm:inline">Histórico</span></TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard">
-            <Dashboard {...fleet} onVehicleClick={goToVehicleMaintenance} />
+            <Dashboard {...fleet} onVehicleClick={goToVehicleMaintenance} onOpenScheduled={goToScheduled} />
           </TabsContent>
           <TabsContent value="vehicles">
             <VehiclesTab {...fleet} onVehicleClick={goToVehicleMaintenance} />
@@ -212,6 +213,17 @@ function Index() {
               setFilterVehicle={setMaintFilterVehicle}
             />
           </TabsContent>
+          <TabsContent value="scheduled">
+            <ScheduledTab
+              vehicles={fleet.vehicles}
+              schedules={fleet.schedules}
+              saveSchedule={fleet.saveSchedule}
+              deleteSchedule={fleet.deleteSchedule}
+              onRealizar={startRealizar}
+              filterVehicle={schedFilterVehicle}
+              setFilterVehicle={setSchedFilterVehicle}
+            />
+          </TabsContent>
           <TabsContent value="calendar">
             <CalendarTab {...fleet} />
           </TabsContent>
@@ -220,7 +232,22 @@ function Index() {
           </TabsContent>
         </Tabs>
       </main>
+
+      <MaintenanceDialog
+        open={realizarOpen}
+        onOpenChange={setRealizarOpen}
+        maintenance={realizarDraft}
+        vehicles={fleet.vehicles}
+        onSave={(m) => {
+          fleet.saveMaintenance(m);
+          if (realizarSched) fleet.completeSchedule(realizarSched.id, m.km, m.data, true);
+          setRealizarOpen(false);
+          setRealizarSched(null);
+          toast.success("Manutenção registrada e próxima reprogramada");
+        }}
+      />
     </div>
+
   );
 }
 
