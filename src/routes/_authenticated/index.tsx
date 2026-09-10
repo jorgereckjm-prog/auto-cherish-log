@@ -280,6 +280,7 @@ function DriverStatusBadge({ status }: { status?: DriverStatus }) {
 /* ===================== DASHBOARD ===================== */
 
 function Dashboard({ vehicles, maintenances, drivers, schedules, onVehicleClick, onOpenScheduled }: FleetState & { onVehicleClick: (id: string) => void; onOpenScheduled: (id?: string) => void }) {
+  const [showCosts, setShowCosts] = useState(true);
   const totalGasto = maintenances.reduce((s, m) => s + m.valor, 0);
   const gastoMes = useMemo(() => {
     const now = new Date();
@@ -290,22 +291,6 @@ function Dashboard({ vehicles, maintenances, drivers, schedules, onVehicleClick,
       })
       .reduce((s, m) => s + m.valor, 0);
   }, [maintenances]);
-
-  const vStats = useMemo(() => {
-    const c = { ativo: 0, manutencao: 0, indisponivel: 0, emprestado: 0, vendido: 0 };
-    vehicles.forEach((v) => { c[v.status ?? "ativo"]++; });
-    return c;
-  }, [vehicles]);
-
-  const dStats = useMemo(() => {
-    const c = { ativo: 0, inativo: 0, ferias: 0, folga: 0 };
-    drivers.forEach((d) => { c[d.status ?? "ativo"]++; });
-    return c;
-  }, [drivers]);
-
-  const comPortao = vehicles.filter((v) => v.controleAcessoPortao).length;
-  const semMotorista = vehicles.filter((v) => v.status !== "vendido" && !v.motoristaId).length;
-  const motoristaSemVeic = drivers.filter((d) => (d.status ?? "ativo") === "ativo" && !d.veiculoId).length;
 
   const alerts = useMemo(() => {
     const out: { type: "warn" | "info"; text: string }[] = [];
