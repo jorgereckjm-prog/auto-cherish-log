@@ -115,11 +115,38 @@ function Index() {
   const perms = usePermissions();
   const [tab, setTab] = useState<string>("dashboard");
   const [maintFilterVehicle, setMaintFilterVehicle] = useState<string>("all");
+  const [schedFilterVehicle, setSchedFilterVehicle] = useState<string>("all");
+  const [realizarOpen, setRealizarOpen] = useState(false);
+  const [realizarDraft, setRealizarDraft] = useState<Maintenance | null>(null);
+  const [realizarSched, setRealizarSched] = useState<ScheduledMaintenance | null>(null);
 
   function goToVehicleMaintenance(vehicleId: string) {
     setMaintFilterVehicle(vehicleId);
     setTab("maintenance");
   }
+
+  function goToScheduled(vehicleId?: string) {
+    setSchedFilterVehicle(vehicleId ?? "all");
+    setTab("scheduled");
+  }
+
+  /** Abre a caixa de manutenção pré-preenchida a partir de um lembrete programado */
+  function startRealizar(s: ScheduledMaintenance) {
+    const v = fleet.vehicles.find((x) => x.id === s.vehicleId);
+    setRealizarSched(s);
+    setRealizarDraft({
+      id: newId(),
+      vehicleId: s.vehicleId,
+      data: new Date().toISOString().slice(0, 10),
+      tipo: "Preventiva",
+      descricao: s.titulo + (s.descricao ? ` — ${s.descricao}` : ""),
+      valor: 0,
+      km: v?.kmAtual ?? s.ultimaKm,
+      oficina: "",
+    });
+    setRealizarOpen(true);
+  }
+
 
   if (!fleet.hydrated) {
     return <div className="min-h-screen bg-background" />;
