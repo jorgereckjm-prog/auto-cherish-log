@@ -91,6 +91,8 @@ import {
   type VehicleStatus,
   type DriverStatus,
 } from "@/lib/fleet-store";
+import type { ScheduledMaintenance } from "@/lib/fleet-store";
+import { ScheduledTab, ScheduleAlertsCard } from "@/components/fleet/ScheduledTab";
 import logoAsset from "@/assets/patrimonial-telecom-logo.png.asset.json";
 import { usePermissions } from "@/lib/permissions";
 
@@ -220,7 +222,7 @@ function DriverStatusBadge({ status }: { status?: DriverStatus }) {
 
 /* ===================== DASHBOARD ===================== */
 
-function Dashboard({ vehicles, maintenances, drivers, onVehicleClick }: FleetState & { onVehicleClick: (id: string) => void }) {
+function Dashboard({ vehicles, maintenances, drivers, schedules, onVehicleClick, onOpenScheduled }: FleetState & { onVehicleClick: (id: string) => void; onOpenScheduled: (id?: string) => void }) {
   const totalGasto = maintenances.reduce((s, m) => s + m.valor, 0);
   const gastoMes = useMemo(() => {
     const now = new Date();
@@ -290,6 +292,8 @@ function Dashboard({ vehicles, maintenances, drivers, onVehicleClick }: FleetSta
 
   return (
     <div className="space-y-6">
+      <ScheduleAlertsCard vehicles={vehicles} schedules={schedules} onOpen={onOpenScheduled} />
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard label="Veículos" value={vehicles.length.toString()} icon={<Car className="size-5" />} />
         <StatCard label="Motoristas" value={drivers.length.toString()} icon={<Users className="size-5" />} />
