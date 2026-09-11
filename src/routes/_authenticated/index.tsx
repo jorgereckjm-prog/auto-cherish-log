@@ -26,6 +26,8 @@ import {
   FileText,
   User,
   Settings,
+  Sun,
+  Moon,
   Eye,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
