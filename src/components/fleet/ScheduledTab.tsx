@@ -19,7 +19,12 @@ import {
 } from "@/lib/fleet-store";
 import { usePermissions } from "@/lib/permissions";
 
-const km = (n: number) => n.toLocaleString("pt-BR");
+const km = (n: number) => Math.round(n).toLocaleString("pt-BR");
+/** Aceita "167.500", "167500", "167,500" e devolve 167500 (KM inteiro). */
+const parseKm = (v: string) => {
+  const digits = v.replace(/\D/g, "");
+  return digits ? parseInt(digits, 10) : 0;
+};
 
 /* ============ BARRA DE PROGRESSO ============ */
 
@@ -321,19 +326,19 @@ function ScheduleDialog({ open, onOpenChange, schedule, vehicles, schedules, onS
           </div>
           <div>
             <Label>KM no último serviço *</Label>
-            <Input type="number" min={0} value={form.ultimaKm}
-              onChange={(e) => setForm({ ...form, ultimaKm: Number(e.target.value) || 0 })} />
+            <Input inputMode="numeric" value={km(form.ultimaKm)}
+              onChange={(e) => setForm({ ...form, ultimaKm: parseKm(e.target.value) })} />
           </div>
 
           <div>
             <Label>Intervalo em KM *</Label>
-            <Input type="number" min={1} value={form.intervaloKm}
-              onChange={(e) => setForm({ ...form, intervaloKm: Number(e.target.value) || 0 })} />
+            <Input inputMode="numeric" value={km(form.intervaloKm)}
+              onChange={(e) => setForm({ ...form, intervaloKm: parseKm(e.target.value) })} />
           </div>
           <div>
             <Label>Antecedência do alerta (KM)</Label>
-            <Input type="number" min={0} value={form.alertaKm}
-              onChange={(e) => setForm({ ...form, alertaKm: Number(e.target.value) || 0 })} />
+            <Input inputMode="numeric" value={km(form.alertaKm)}
+              onChange={(e) => setForm({ ...form, alertaKm: parseKm(e.target.value) })} />
           </div>
 
           <div className="col-span-2">
