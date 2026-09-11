@@ -115,6 +115,36 @@ export const Route = createFileRoute("/_authenticated/")({
 
 type FleetState = ReturnType<typeof useFleet>;
 
+/** Interruptor de tema claro/escuro com persistência local */
+function ThemeToggle() {
+  const [dark, setDark] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const saved = window.localStorage.getItem("fleet.theme");
+    const isDark = saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.classList.toggle("dark", isDark);
+    return isDark;
+  });
+
+  function toggle() {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    window.localStorage.setItem("fleet.theme", next ? "dark" : "light");
+  }
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="size-8"
+      onClick={toggle}
+      title={dark ? "Mudar para tema claro" : "Mudar para tema escuro"}
+    >
+      {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+    </Button>
+  );
+}
+
 function Index() {
   const fleet = useFleet();
   const perms = usePermissions();
@@ -181,6 +211,7 @@ function Index() {
             {!perms.canEdit && !perms.loading && (
               <Badge variant="secondary" className="gap-1 text-xs"><Eye className="size-3" /> Visualização</Badge>
             )}
+            <ThemeToggle />
             <Link to="/configuracoes" title="Configurações">
               <Button variant="ghost" size="icon" className="size-8">
                 <Settings className="size-4" />
