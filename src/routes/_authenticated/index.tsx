@@ -425,34 +425,8 @@ function Dashboard({ vehicles, maintenances, drivers, schedules, onVehicleClick,
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Status dos veículos</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            <StatusMini label="Ativos" count={vStats.ativo} info={vehicleStatusInfo.ativo} />
-            <StatusMini label="Manutenção" count={vStats.manutencao} info={vehicleStatusInfo.manutencao} />
-            <StatusMini label="Indisponíveis" count={vStats.indisponivel} info={vehicleStatusInfo.indisponivel} />
-            <StatusMini label="Emprestados" count={vStats.emprestado} info={vehicleStatusInfo.emprestado} />
-            <StatusMini label="Vendidos" count={vStats.vendido} info={vehicleStatusInfo.vendido} />
-            <StatusMini label="Sem motorista" count={semMotorista} info={{ bg: "bg-orange-100", color: "text-orange-700", dot: "bg-orange-500", label: "" }} />
-            <StatusMini label="C/ portão" count={comPortao} info={{ bg: "bg-indigo-100", color: "text-indigo-700", dot: "bg-indigo-500", label: "" }} icon={<KeyRound className="size-3" />} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Status dos motoristas</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            <StatusMini label="Ativos" count={dStats.ativo} info={driverStatusInfo.ativo} />
-            <StatusMini label="Férias" count={dStats.ferias} info={driverStatusInfo.ferias} />
-            <StatusMini label="Folga" count={dStats.folga} info={driverStatusInfo.folga} />
-            <StatusMini label="Inativos" count={dStats.inativo} info={driverStatusInfo.inativo} />
-            <StatusMini label="Sem veículo" count={motoristaSemVeic} info={{ bg: "bg-orange-100", color: "text-orange-700", dot: "bg-orange-500", label: "" }} />
-          </CardContent>
-        </Card>
-      </div>
+
+
 
       {alerts.length > 0 && (
         <Card>
