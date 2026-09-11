@@ -158,6 +158,7 @@ function Index() {
   }
 
   return (
+    <div className="min-h-screen bg-muted/30">
       <header className="border-b bg-background sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3 flex-wrap">
           <img
