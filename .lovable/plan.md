@@ -1,74 +1,44 @@
-Vou implementar uma reformulação completa do sistema de controle de frotas com integração entre veículos, motoristas, histórico, calendário e dashboard gerencial. Todos os dados continuam em `localStorage` (sem backend) — funciona offline no app Electron.
+# Leitura automática de comprovantes de abastecimento
 
-## Estrutura proposta
+Sim, é possível. Você tira/anexa a foto do comprovante, o sistema lê a placa, a quilometragem, a data, os litros e o valor, mostra tudo na tela para você conferir e, ao confirmar, atualiza a km do veículo e guarda o abastecimento no histórico.
 
-### Novas abas
-```
-Dashboard | Veículos | Motoristas | Manutenções | Calendário | Histórico
-```
+## Como vai funcionar
 
-### Arquivos a criar/editar
-- `src/lib/fleet-store.ts` — expandir tipos e store (Vehicle, Driver, Maintenance, Loan, Sale, AuditLog)
-- `src/components/fleet/VehiclesTab.tsx` — extrair e expandir
-- `src/components/fleet/DriversTab.tsx` — novo
-- `src/components/fleet/MaintenanceTab.tsx` — extrair
-- `src/components/fleet/CalendarTab.tsx` — novo (visualização mensal/semanal)
-- `src/components/fleet/HistoryTab.tsx` — novo (auditoria)
-- `src/components/fleet/Dashboard.tsx` — expandir com novos indicadores e alertas
-- `src/components/fleet/VehicleDialog.tsx` — formulário com status, motorista, controle de portão
-- `src/components/fleet/DriverDialog.tsx` — formulário com status e vínculo
-- `src/routes/index.tsx` — orquestrar tabs
+1. Nova aba "Abastecimentos" no sistema, com o botão "+ Enviar comprovante".
+2. Você escolhe a foto (uma por vez) ou tira pela câmera do celular.
+3. A leitura acontece em alguns segundos e abre uma janela de conferência com:
+   - Veículo identificado pela placa (se a placa não bater com nenhum cadastrado, você escolhe o veículo na lista)
+   - Data, quilometragem, litros, valor por litro e valor total
+   - A foto ao lado, para você comparar
+4. Você corrige o que estiver errado e clica em "Confirmar".
+5. Ao confirmar:
+   - A quilometragem do veículo é atualizada (com aviso se a km lida for menor que a atual ou muito acima do normal)
+   - O abastecimento entra no histórico de abastecimentos do veículo, com custo
+   - Fica registrado no histórico de alterações quem confirmou
 
-## Modelo de dados
+## Histórico de abastecimentos
 
-```ts
-type VehicleStatus = "ativo" | "manutencao" | "indisponivel" | "emprestado" | "vendido";
-type DriverStatus = "ativo" | "inativo" | "ferias" | "folga";
+- Lista com filtro por veículo e por mês, igual às manutenções
+- Totais de litros e de gastos no período
+- Exportação em planilha (CSV)
+- Editar e excluir um lançamento
+- Média de consumo (km rodados ÷ litros) entre abastecimentos do mesmo veículo
 
-type Vehicle = {
-  id, nome, placa, modelo, ano, kmAtual, imagem?, observacoes?,
-  controleAcessoPortao: boolean,
-  motoristaId?: string,
-  status: VehicleStatus,
-  // dados conforme status
-  manutencao?: { inicio, previsaoFim, fimReal?, descricao, observacoes?, valor? },
-  emprestimo?: { para, inicio, previsaoDevolucao, observacoes? },
-  venda?: { data, comprador?, valor?, observacoes? },
-};
+## Alertas na Dashboard
 
-type Driver = {
-  id, nome, telefone?, observacoes?,
-  veiculoId?: string,
-  status: DriverStatus,
-  ferias?: { inicio, fim, observacoes? },
-  folga?: { inicio, fim, observacoes? },
-  inativo?: { inicio, motivo, observacoes? },
-};
+- Card com gasto de combustível do mês e comparação com o mês anterior
+- Aviso quando a km de um veículo estiver desatualizada há muito tempo
 
-type AuditLog = {
-  id, timestamp, entidade: "veiculo"|"motorista",
-  entidadeId, entidadeNome, acao, antes?, depois?, observacoes?
-};
-```
+## Pontos a considerar
 
-## Funcionalidades
+- A leitura é muito boa em cupons legíveis, mas nem todo comprovante traz a placa ou a km impressa. Quando faltar, o sistema pede que você complete manualmente — por isso a tela de conferência.
+- Fotos tortas, escuras ou amassadas reduzem a precisão.
 
-**Veículos** — Card com indicador colorido de status (🟩🟥🟨🟦⬜), checkbox controle de portão visível na lista, dialog de edição com seções dinâmicas (manutenção/empréstimo/venda), motorista vinculado (select), botão "Histórico de manutenções".
+## Detalhes técnicos
 
-**Motoristas** — Nova aba com lista, dialog com status condicional (férias/folga/inativo abrem campos extras), veículo vinculado (select de veículos não vendidos).
-
-**Vínculo automático** — Ao salvar veículo com motorista: limpar vínculo antigo do motorista, atualizar ambos, registrar log. Ao vender: remover vínculo.
-
-**Calendário** — Grid mensal com navegação prev/next, células coloridas por evento (manutenção/empréstimo/férias/folga), filtros por veículo/motorista, visualização semanal opcional.
-
-**Histórico** — Lista cronológica reversa de todos os logs, filtro por entidade, exportável.
-
-**Dashboard** — Cards de contagem por status (veículos e motoristas), alertas automáticos (manutenções vencendo em 3 dias, empréstimos vencendo, férias terminando, veículos/motoristas sem vínculo).
-
-**Usuário responsável** — Como não há login, usar campo "Responsável" digitado no momento da ação, ou um setting global "Usuário atual" salvo em localStorage.
-
-## Pontos a confirmar
-
-1. Sem backend (tudo em `localStorage`) — confirma? Ou quer Lovable Cloud para sincronizar entre dispositivos?
-2. "Usuário responsável" — pedir no momento da ação ou ter um campo global "Operador" no topo?
-3. Manter as 7 abas (Dashboard, Veículos, Motoristas, Manutenções, Calendário, Histórico) ou agrupar?
+- Leitura da imagem por IA (Lovable AI, modelo com entrada de imagem) via `createServerFn` no servidor, com saída estruturada: `placa`, `data`, `km`, `litros`, `valorLitro`, `valorTotal`, `posto`, mais um nível de confiança por campo. Chave da IA fica só no servidor.
+- Imagem enviada como base64 (redimensionada no navegador antes do envio para reduzir tamanho); a foto é guardada junto ao registro para consulta.
+- Erros do serviço de IA (limite, crédito, falha) aparecem como mensagem clara na tela, com a opção de lançar manualmente.
+- Novos dados em `src/lib/fleet-store.ts`, seguindo o padrão atual (localStorage): tipo `Fueling` + chave `fleet.fuelings.v1`, funções `saveFueling`/`deleteFueling`, atualização de `kmAtual` e registro em auditoria.
+- Nova aba e componente `src/components/fleet/FuelingTab.tsx`, ligados em `src/routes/_authenticated/index.tsx`, mantendo o padrão visual atual.
+- Ações de criar/editar/excluir respeitam as permissões já existentes.
