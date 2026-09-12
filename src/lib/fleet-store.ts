@@ -519,6 +519,51 @@ export function useFleet() {
     emit();
   }, []);
 
+  /** Salva abastecimento e atualiza a KM do veículo quando for maior */
+  const saveFueling = useCallback((f: Fueling) => {
+    const list = readLS<Fueling[]>(FUEL_KEY, []);
+    const idx = list.findIndex((x) => x.id === f.id);
+    const prev = idx >= 0 ? list[idx] : undefined;
+    if (idx >= 0) list[idx] = f;
+    else list.push({ ...f, createdAt: new Date().toISOString() });
+    writeLS(FUEL_KEY, list);
+
+    const vlist = readLS<Vehicle[]>(VEHICLES_KEY, []);
+    const v = vlist.find((x) => x.id === f.vehicleId);
+    let kmAntes: number | undefined;
+    if (v && f.km > v.kmAtual) {
+      kmAntes = v.kmAtual;
+      v.kmAtual = f.km;
+      writeLS(VEHICLES_KEY, vlist);
+    }
+
+    appendAudit({
+      entidade: "veiculo", entidadeId: f.vehicleId, entidadeNome: v?.nome ?? "—",
+      acao: prev ? "Abastecimento editado" : "Abastecimento registrado",
+      antes: kmAntes !== undefined ? `${kmAntes.toLocaleString("pt-BR")} km` : undefined,
+      depois: `${f.km.toLocaleString("pt-BR")} km · ${f.litros.toLocaleString("pt-BR")} L`,
+      observacoes: f.posto,
+      responsavel: getOperator(),
+    });
+    emit();
+  }, []);
+
+  const deleteFueling = useCallback((id: string) => {
+    const all = readLS<Fueling[]>(FUEL_KEY, []);
+    const removed = all.find((f) => f.id === id);
+    writeLS(FUEL_KEY, all.filter((f) => f.id !== id));
+    if (removed) {
+      const vName = readLS<Vehicle[]>(VEHICLES_KEY, []).find((v) => v.id === removed.vehicleId)?.nome ?? "—";
+      appendAudit({
+        entidade: "veiculo", entidadeId: removed.vehicleId, entidadeNome: vName,
+        acao: "Abastecimento removido",
+        antes: `${removed.km.toLocaleString("pt-BR")} km`,
+        responsavel: getOperator(),
+      });
+    }
+    emit();
+  }, []);
+
   const clearAudit = useCallback(() => {
     writeLS(AUDIT_KEY, []);
     emit();
@@ -532,6 +577,9 @@ export function useFleet() {
     audit,
     operator,
     schedules,
+    fuelings,
+    saveFueling,
+    deleteFueling,
     saveVehicle,
     deleteVehicle,
     saveDriver,
