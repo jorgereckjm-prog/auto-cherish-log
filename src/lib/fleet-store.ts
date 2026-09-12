@@ -94,12 +94,28 @@ export type ScheduledMaintenance = {
 
 export type ScheduledLevel = "programada" | "proxima" | "vencida" | "realizada";
 
+/** Abastecimento registrado (manual ou via leitura de comprovante) */
+export type Fueling = {
+  id: string;
+  vehicleId: string;
+  data: string; // YYYY-MM-DD
+  km: number;
+  litros: number;
+  valorLitro: number;
+  valorTotal: number;
+  posto?: string;
+  observacoes?: string;
+  origem?: "foto" | "manual";
+  createdAt?: string;
+};
+
 const VEHICLES_KEY = "fleet.vehicles.v1";
 const MAINT_KEY = "fleet.maintenances.v1";
 const DRIVERS_KEY = "fleet.drivers.v1";
 const AUDIT_KEY = "fleet.audit.v1";
 const OPERATOR_KEY = "fleet.operator.v1";
 const SCHED_KEY = "fleet.scheduled.v1";
+const FUEL_KEY = "fleet.fuelings.v1";
 
 
 const seedVehicles: Vehicle[] = [
