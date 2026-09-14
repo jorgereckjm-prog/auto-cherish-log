@@ -29,6 +29,7 @@ import {
   Sun,
   Moon,
   Eye,
+  Fuel,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -98,6 +99,7 @@ import {
 } from "@/lib/fleet-store";
 import type { ScheduledMaintenance } from "@/lib/fleet-store";
 import { ScheduledTab, ScheduleAlertsCard } from "@/components/fleet/ScheduledTab";
+import { FuelTab } from "@/components/fleet/FuelTab";
 import logoAsset from "@/assets/patrimonial-telecom-logo.png.asset.json";
 import { usePermissions } from "@/lib/permissions";
 
@@ -223,12 +225,13 @@ function Index() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         <Tabs value={tab} onValueChange={setTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7">
+          <TabsList className="grid w-full grid-cols-4 sm:grid-cols-8">
             <TabsTrigger value="dashboard" className="gap-1.5"><LayoutDashboard className="size-4" /><span className="hidden sm:inline">Dashboard</span></TabsTrigger>
             <TabsTrigger value="vehicles" className="gap-1.5"><Car className="size-4" /><span className="hidden sm:inline">Veículos</span></TabsTrigger>
             <TabsTrigger value="drivers" className="gap-1.5"><Users className="size-4" /><span className="hidden sm:inline">Motoristas</span></TabsTrigger>
             <TabsTrigger value="maintenance" className="gap-1.5"><Wrench className="size-4" /><span className="hidden sm:inline">Manutenções</span></TabsTrigger>
             <TabsTrigger value="scheduled" className="gap-1.5"><CalendarClock className="size-4" /><span className="hidden sm:inline">Programadas</span></TabsTrigger>
+            <TabsTrigger value="fuel" className="gap-1.5"><Fuel className="size-4" /><span className="hidden sm:inline">Abastecimentos</span></TabsTrigger>
             <TabsTrigger value="calendar" className="gap-1.5"><CalendarIcon className="size-4" /><span className="hidden sm:inline">Calendário</span></TabsTrigger>
             <TabsTrigger value="history" className="gap-1.5"><HistoryIcon className="size-4" /><span className="hidden sm:inline">Histórico</span></TabsTrigger>
           </TabsList>
@@ -258,6 +261,14 @@ function Index() {
               onRealizar={startRealizar}
               filterVehicle={schedFilterVehicle}
               setFilterVehicle={setSchedFilterVehicle}
+            />
+          </TabsContent>
+          <TabsContent value="fuel">
+            <FuelTab
+              vehicles={fleet.vehicles}
+              fuelings={fleet.fuelings}
+              saveFueling={fleet.saveFueling}
+              deleteFueling={fleet.deleteFueling}
             />
           </TabsContent>
           <TabsContent value="calendar">
