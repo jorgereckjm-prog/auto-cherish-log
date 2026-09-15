@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Camera, Upload, Loader2, Trash2, Pencil, Download, Fuel, Plus } from "lucide-react";
+import { Camera, Upload, Loader2, Trash2, Pencil, Download, Fuel, Plus, AlertTriangle, CheckCircle2, Image as ImageIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { newId, formatBRL, formatDate, type Vehicle, type Fueling } from "@/lib/fleet-store";
 import { usePermissions } from "@/lib/permissions";
-import { readFuelReceipt } from "@/lib/fuel-ocr.functions";
+import { readFuelReceipt, type FuelReceiptRead } from "@/lib/fuel-ocr.functions";
+import { prepareReceiptVariants, uploadReceipt, receiptSignedUrl } from "@/lib/receipt-image";
 
 const kmFmt = (n: number) => Math.round(n).toLocaleString("pt-BR");
 const parseKm = (v: string) => {
@@ -23,69 +24,68 @@ const parseKm = (v: string) => {
   return digits ? parseInt(digits, 10) : 0;
 };
 const parseDec = (v: string) => {
-  const n = parseFloat(v.replace(/\./g, "").replace(",", "."));
+  const s = v.trim();
+  if (!s) return 0;
+  const n = parseFloat(s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s);
   return isFinite(n) ? n : 0;
 };
+const dec = (n: number, casas = 2) => n.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: casas });
 const normPlaca = (p: string) => p.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
 
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result));
-    r.onerror = () => reject(new Error("Não foi possível ler a imagem."));
-    r.readAsDataURL(file);
-  });
-}
-
-/** Reduz a imagem para no máx. 1600px para acelerar o envio */
-async function shrinkImage(dataUrl: string): Promise<string> {
-  try {
-    const img = new Image();
-    await new Promise<void>((res, rej) => {
-      img.onload = () => res();
-      img.onerror = () => rej(new Error("erro"));
-      img.src = dataUrl;
-    });
-    const max = 1600;
-    const scale = Math.min(1, max / Math.max(img.width, img.height));
-    if (scale >= 1) return dataUrl;
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(img.width * scale);
-    canvas.height = Math.round(img.height * scale);
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return dataUrl;
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL("image/jpeg", 0.85);
-  } catch {
-    return dataUrl;
-  }
-}
+const ACEITOS = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
 type Draft = {
   id: string;
   vehicleId: string;
   data: string;
+  hora: string;
   km: string;
+  combustivel: string;
   litros: string;
   valorLitro: string;
   valorTotal: string;
   posto: string;
+  cnpjPosto: string;
   observacoes: string;
   origem: "foto" | "manual";
+  comprovantePath?: string;
+  dadosIa?: Record<string, unknown>;
+  lidoEm?: string;
 };
 
 const emptyDraft = (): Draft => ({
   id: newId(),
   vehicleId: "",
   data: new Date().toISOString().slice(0, 10),
+  hora: "",
   km: "",
+  combustivel: "",
   litros: "",
   valorLitro: "",
   valorTotal: "",
   posto: "",
+  cnpjPosto: "",
   observacoes: "",
   origem: "manual",
 });
+
+type Conf = FuelReceiptRead["confianca"];
+const emptyConf: Conf = { placa: 100, combustivel: 100, preco_litro: 100, litros: 100, valor_total: 100, quilometragem: 100 };
+
+/** cor do campo conforme a confiança da leitura */
+function confClass(c: number) {
+  if (c >= 85) return "";
+  if (c >= 60) return "border-amber-400 bg-amber-50 dark:bg-amber-950/30";
+  return "border-red-400 bg-red-50 dark:bg-red-950/30";
+}
+function ConfHint({ c }: { c: number }) {
+  if (c >= 85) return null;
+  return (
+    <p className={`text-[11px] ${c >= 60 ? "text-amber-600" : "text-red-600"}`}>
+      {c >= 60 ? "Verifique este dado." : "Leitura duvidosa — confirme manualmente."}
+    </p>
+  );
+}
 
 export function FuelTab({
   vehicles, fuelings, saveFueling, deleteFueling,
@@ -95,14 +95,18 @@ export function FuelTab({
   saveFueling: (f: Fueling) => void;
   deleteFueling: (id: string) => void;
 }) {
-  const { canEdit } = usePermissions();
+  const { canEdit, email } = usePermissions();
   const [filterVehicle, setFilterVehicle] = useState("all");
   const [filterMonth, setFilterMonth] = useState("");
   const [loading, setLoading] = useState(false);
+  const [etapa, setEtapa] = useState("");
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>(emptyDraft());
+  const [inicial, setInicial] = useState<Draft | null>(null);
+  const [conf, setConf] = useState<Conf>(emptyConf);
   const [preview, setPreview] = useState<string | null>(null);
-  const [aviso, setAviso] = useState<string | null>(null);
+  const [placaLida, setPlacaLida] = useState<string | null>(null);
+  const [avisos, setAvisos] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const camRef = useRef<HTMLInputElement>(null);
 
@@ -118,7 +122,6 @@ export function FuelTab({
   const totalLitros = filtered.reduce((s, f) => s + f.litros, 0);
   const totalValor = filtered.reduce((s, f) => s + f.valorTotal, 0);
 
-  /** Média km/L do veículo filtrado (ou geral por veículo) */
   const media = useMemo(() => {
     const byVehicle = new Map<string, Fueling[]>();
     for (const f of fuelings) {
@@ -142,43 +145,101 @@ export function FuelTab({
     return litrosTotal > 0 ? kmTotal / litrosTotal : null;
   }, [fuelings, filterVehicle]);
 
+  /** validação matemática: litros x preço ≈ total */
+  const contaOk = useMemo(() => {
+    const l = parseDec(draft.litros);
+    const p = parseDec(draft.valorLitro);
+    const t = parseDec(draft.valorTotal);
+    if (!l || !p || !t) return null;
+    const esperado = l * p;
+    const tolerancia = Math.max(0.05, esperado * 0.02);
+    return Math.abs(esperado - t) <= tolerancia;
+  }, [draft.litros, draft.valorLitro, draft.valorTotal]);
+
+  const veiculoDraft = vehicles.find((v) => v.id === draft.vehicleId);
+
   async function handleFile(file: File | undefined) {
     if (!file) return;
+    if (!ACEITOS.includes(file.type.toLowerCase())) {
+      toast.error("Formato não aceito. Envie a foto em JPG, PNG ou WEBP.");
+      return;
+    }
     setLoading(true);
-    setAviso(null);
+    setAvisos([]);
+    setPlacaLida(null);
+    setConf(emptyConf);
+    let path: string | undefined;
+    let previewUrl: string | null = null;
+
     try {
-      const raw = await fileToDataUrl(file);
-      const img = await shrinkImage(raw);
-      setPreview(img);
-      const r = await readFuelReceipt({ data: { imageDataUrl: img } });
+      setEtapa("Preparando a foto...");
+      const variants = await prepareReceiptVariants(file);
+      previewUrl = variants.previewUrl;
+      setPreview(variants.previewUrl);
+
+      setEtapa("Enviando a foto...");
+      const original = await uploadReceipt(variants.original, "original");
+      path = original.path;
+      const urls = [original.signedUrl];
+      const tratada = await uploadReceipt(variants.enhanced, "tratada");
+      urls.push(tratada.signedUrl);
+      if (variants.cropped) {
+        const recorte = await uploadReceipt(variants.cropped, "recorte");
+        urls.push(recorte.signedUrl);
+      }
+
+      setEtapa("Lendo o comprovante...");
+      const r = await readFuelReceipt({ data: { imageUrls: urls } });
 
       const d = emptyDraft();
       d.origem = "foto";
+      d.comprovantePath = path;
+      d.lidoEm = new Date().toISOString();
+      d.dadosIa = r as unknown as Record<string, unknown>;
       if (r.data) d.data = r.data;
-      if (r.km) d.km = kmFmt(r.km);
-      if (r.litros) d.litros = String(r.litros).replace(".", ",");
-      if (r.valorLitro) d.valorLitro = String(r.valorLitro).replace(".", ",");
-      if (r.valorTotal) d.valorTotal = String(r.valorTotal).replace(".", ",");
+      if (r.hora) d.hora = r.hora;
+      if (r.quilometragem) d.km = kmFmt(r.quilometragem);
+      if (r.combustivel) d.combustivel = r.combustivel;
+      if (r.litros) d.litros = dec(r.litros, 3);
+      if (r.preco_litro) d.valorLitro = dec(r.preco_litro, 3);
+      if (r.valor_total) d.valorTotal = dec(r.valor_total, 2);
       if (r.posto) d.posto = r.posto;
+      if (r.cnpj_posto) d.cnpjPosto = r.cnpj_posto;
       if (r.observacoes) d.observacoes = r.observacoes;
 
-      const avisos: string[] = [];
+      const msgs: string[] = [];
       if (r.placa) {
-        const alvo = normPlaca(r.placa);
-        const v = vehicles.find((x) => normPlaca(x.placa) === alvo);
+        setPlacaLida(r.placa);
+        const v = vehicles.find((x) => normPlaca(x.placa) === normPlaca(r.placa!));
         if (v) d.vehicleId = v.id;
-        else avisos.push(`A placa lida (${r.placa}) não corresponde a nenhum veículo cadastrado.`);
+        else msgs.push(`Placa identificada (${r.placa}), mas o veículo não está cadastrado. Escolha o veículo na lista.`);
       } else {
-        avisos.push("Não foi possível ler a placa no comprovante.");
+        msgs.push("Não foi possível ler a placa. Escolha o veículo na lista.");
       }
-      if (!r.km) avisos.push("A quilometragem não foi encontrada — preencha manualmente.");
-      setAviso(avisos.length ? avisos.join(" ") : null);
+      if (!r.quilometragem) msgs.push("A quilometragem não foi encontrada no comprovante — preencha manualmente.");
+      if (!r.litros && !r.valor_total) msgs.push("Os valores do abastecimento não foram lidos. Complete os campos olhando a foto ao lado.");
+
+      setConf(r.confianca);
+      setAvisos(msgs);
       setDraft(d);
+      setInicial(d);
       setOpen(true);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Não foi possível ler o comprovante.");
+      // nunca deixa o usuário sem saída: abre o lançamento manual com a foto
+      const d = emptyDraft();
+      d.origem = "foto";
+      if (path) d.comprovantePath = path;
+      setDraft(d);
+      setInicial(d);
+      setPreview(previewUrl);
+      setAvisos([
+        e instanceof Error ? e.message : "Não foi possível ler o comprovante automaticamente.",
+        "Confira a foto ao lado e preencha os dados manualmente.",
+      ]);
+      setOpen(true);
     } finally {
       setLoading(false);
+      setEtapa("");
       if (fileRef.current) fileRef.current.value = "";
       if (camRef.current) camRef.current.value = "";
     }
@@ -186,27 +247,45 @@ export function FuelTab({
 
   function openManual() {
     setPreview(null);
-    setAviso(null);
-    setDraft(emptyDraft());
+    setAvisos([]);
+    setPlacaLida(null);
+    setConf(emptyConf);
+    const d = emptyDraft();
+    setDraft(d);
+    setInicial(d);
     setOpen(true);
   }
 
-  function openEdit(f: Fueling) {
-    setPreview(null);
-    setAviso(null);
-    setDraft({
+  async function openEdit(f: Fueling) {
+    setAvisos([]);
+    setPlacaLida(null);
+    setConf(emptyConf);
+    const d: Draft = {
       id: f.id,
       vehicleId: f.vehicleId,
       data: f.data,
+      hora: f.hora ?? "",
       km: kmFmt(f.km),
-      litros: String(f.litros).replace(".", ","),
-      valorLitro: String(f.valorLitro).replace(".", ","),
-      valorTotal: String(f.valorTotal).replace(".", ","),
+      combustivel: f.combustivel ?? "",
+      litros: dec(f.litros, 3),
+      valorLitro: dec(f.valorLitro, 3),
+      valorTotal: dec(f.valorTotal, 2),
       posto: f.posto ?? "",
+      cnpjPosto: f.cnpjPosto ?? "",
       observacoes: f.observacoes ?? "",
       origem: f.origem ?? "manual",
-    });
+      comprovantePath: f.comprovantePath,
+      dadosIa: f.dadosIa,
+      lidoEm: f.lidoEm,
+    };
+    setDraft(d);
+    setInicial(d);
+    setPreview(null);
     setOpen(true);
+    if (f.comprovantePath) {
+      const url = await receiptSignedUrl(f.comprovantePath);
+      if (url) setPreview(url);
+    }
   }
 
   function confirmar() {
@@ -219,6 +298,11 @@ export function FuelTab({
     if (km <= 0) return toast.error("Informe a quilometragem.");
     if (litros <= 0) return toast.error("Informe a quantidade de litros.");
     if (!valorTotal && litros && valorLitro) valorTotal = +(litros * valorLitro).toFixed(2);
+    if (contaOk === false) {
+      return toast.error("Os valores lidos não conferem. Verifique o comprovante.", {
+        description: `${dec(litros, 3)} L × ${formatBRL(valorLitro)} = ${formatBRL(+(litros * valorLitro).toFixed(2))}, mas o total informado é ${formatBRL(valorTotal)}.`,
+      });
+    }
 
     const dup = fuelings.find(
       (f) => f.id !== draft.id && f.vehicleId === draft.vehicleId && f.data === draft.data && Math.abs(f.km - km) < 2,
@@ -230,17 +314,31 @@ export function FuelTab({
       toast.warning(`KM informada (${kmFmt(km)}) é menor que a atual do veículo (${kmFmt(v.kmAtual)}). O registro foi salvo, mas a KM do veículo não mudou.`);
     }
 
+    const corrigidos = inicial
+      ? (Object.keys(draft) as (keyof Draft)[]).filter(
+          (k) => !["id", "dadosIa", "lidoEm", "comprovantePath", "origem"].includes(k) && draft[k] !== inicial[k],
+        ).map(String)
+      : [];
+
     saveFueling({
       id: draft.id,
       vehicleId: draft.vehicleId,
       data: draft.data,
+      hora: draft.hora || undefined,
       km,
       litros,
       valorLitro: valorLitro || (litros ? +(valorTotal / litros).toFixed(3) : 0),
       valorTotal,
+      combustivel: draft.combustivel || undefined,
       posto: draft.posto || undefined,
+      cnpjPosto: draft.cnpjPosto || undefined,
       observacoes: draft.observacoes || undefined,
       origem: draft.origem,
+      comprovantePath: draft.comprovantePath,
+      lidoEm: draft.lidoEm,
+      lidoPor: email || undefined,
+      dadosIa: draft.dadosIa,
+      camposCorrigidos: corrigidos.length ? corrigidos : undefined,
     });
     toast.success("Abastecimento salvo e quilometragem atualizada.");
     setOpen(false);
@@ -249,16 +347,17 @@ export function FuelTab({
 
   function exportCsv() {
     const rows = [
-      ["Data", "Veículo", "Placa", "KM", "Litros", "Valor/L", "Total", "Posto", "Observações"],
+      ["Data", "Hora", "Veículo", "Placa", "KM", "Combustível", "Litros", "Valor/L", "Total", "Posto", "CNPJ", "Origem", "Observações"],
       ...filtered.map((f) => {
         const v = vehicles.find((x) => x.id === f.vehicleId);
         return [
-          formatDate(f.data), v?.nome ?? "", v?.placa ?? "",
-          String(f.km), String(f.litros), String(f.valorLitro), String(f.valorTotal),
-          f.posto ?? "", (f.observacoes ?? "").replace(/[\r\n]+/g, " "),
+          formatDate(f.data), f.hora ?? "", v?.nome ?? "", v?.placa ?? "",
+          String(f.km), f.combustivel ?? "", String(f.litros), String(f.valorLitro), String(f.valorTotal),
+          f.posto ?? "", f.cnpjPosto ?? "", f.origem === "foto" ? "Leitura de comprovante" : "Manual",
+          (f.observacoes ?? "").replace(/[\r\n]+/g, " "),
         ];
       }),
-      ["", "", "", "", String(totalLitros.toFixed(2)), "", String(totalValor.toFixed(2)), "", ""],
+      ["", "", "", "", "", "", String(totalLitros.toFixed(2)), "", String(totalValor.toFixed(2)), "", "", "", ""],
     ];
     const csv = rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(";")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
@@ -270,6 +369,13 @@ export function FuelTab({
     URL.revokeObjectURL(url);
   }
 
+  async function verComprovante(f: Fueling) {
+    if (!f.comprovantePath) return;
+    const url = await receiptSignedUrl(f.comprovantePath);
+    if (url) window.open(url, "_blank", "noopener");
+    else toast.error("Não foi possível abrir a foto do comprovante.");
+  }
+
   return (
     <div className="space-y-4">
       <Card>
@@ -277,15 +383,15 @@ export function FuelTab({
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div>
               <CardTitle className="flex items-center gap-2 text-base"><Fuel className="size-4" /> Abastecimentos</CardTitle>
-              <CardDescription>Envie a foto do comprovante: o sistema lê placa, data, KM, litros e valores para você conferir.</CardDescription>
+              <CardDescription>Envie a foto do comprovante (JPG, PNG ou WEBP): o sistema lê placa, data, KM, litros e valores para você conferir.</CardDescription>
             </div>
             {canEdit && (
               <div className="flex items-center gap-2 flex-wrap">
-                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
+                <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
                 <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
                 <Button size="sm" onClick={() => fileRef.current?.click()} disabled={loading} className="gap-1.5">
                   {loading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-                  {loading ? "Lendo comprovante..." : "Enviar comprovante"}
+                  {loading ? etapa || "Lendo comprovante..." : "Enviar comprovante"}
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => camRef.current?.click()} disabled={loading} className="gap-1.5">
                   <Camera className="size-4" /> Câmera
@@ -346,14 +452,19 @@ export function FuelTab({
                   <div className="flex-1 min-w-[180px]">
                     <p className="text-sm font-medium">{vehicleName(f.vehicleId)}</p>
                     <p className="text-xs text-muted-foreground">
-                      {formatDate(f.data)} · {kmFmt(f.km)} km{f.posto ? ` · ${f.posto}` : ""}
+                      {formatDate(f.data)}{f.hora ? ` ${f.hora}` : ""} · {kmFmt(f.km)} km{f.combustivel ? ` · ${f.combustivel}` : ""}{f.posto ? ` · ${f.posto}` : ""}
                     </p>
                   </div>
                   <div className="text-right text-sm tabular-nums">
-                    <p>{f.litros.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} L</p>
+                    <p>{f.litros.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} L</p>
                     <p className="text-xs text-muted-foreground">{formatBRL(f.valorTotal)}</p>
                   </div>
                   {f.origem === "foto" && <Badge variant="secondary" className="text-[10px]">foto</Badge>}
+                  {f.comprovantePath && (
+                    <Button size="icon" variant="ghost" className="size-7" title="Ver comprovante" onClick={() => verComprovante(f)}>
+                      <ImageIcon className="size-3.5" />
+                    </Button>
+                  )}
                   {canEdit && (
                     <div className="flex items-center gap-1">
                       <Button size="icon" variant="ghost" className="size-7" onClick={() => openEdit(f)}>
@@ -386,62 +497,111 @@ export function FuelTab({
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Conferir abastecimento</DialogTitle>
-            <DialogDescription>Revise os dados antes de salvar. A quilometragem do veículo só é atualizada após confirmar.</DialogDescription>
+            <DialogDescription>Revise e corrija os dados antes de salvar. Nada é gravado e a quilometragem do veículo só muda após confirmar.</DialogDescription>
           </DialogHeader>
 
-          {preview && (
-            <img src={preview} alt="Comprovante enviado" className="max-h-40 w-full object-contain rounded-md border bg-muted" />
-          )}
-          {aviso && (
-            <p className="text-xs rounded-md border border-amber-300 bg-amber-50 text-amber-800 p-2">{aviso}</p>
-          )}
+          <div className="grid md:grid-cols-[220px_1fr] gap-4">
+            <div className="space-y-2">
+              {preview ? (
+                <a href={preview} target="_blank" rel="noopener noreferrer">
+                  <img src={preview} alt="Comprovante enviado" className="w-full max-h-72 object-contain rounded-md border bg-muted" />
+                </a>
+              ) : (
+                <div className="rounded-md border bg-muted/40 p-4 text-xs text-muted-foreground text-center">Lançamento manual (sem foto)</div>
+              )}
+              <div className="rounded-md border p-2 text-xs space-y-1">
+                <p className="font-medium">Veículo</p>
+                {veiculoDraft ? (
+                  <p className="text-muted-foreground">Identificado: {veiculoDraft.modelo || veiculoDraft.nome} · {veiculoDraft.placa}</p>
+                ) : placaLida ? (
+                  <p className="text-amber-600">Placa {placaLida} lida, mas o veículo não está cadastrado.</p>
+                ) : (
+                  <p className="text-muted-foreground">Selecione o veículo ao lado.</p>
+                )}
+              </div>
+              {contaOk !== null && (
+                <div className={`rounded-md border p-2 text-xs flex gap-2 ${contaOk ? "text-emerald-700 border-emerald-300" : "text-red-700 border-red-300 bg-red-50 dark:bg-red-950/30"}`}>
+                  {contaOk ? <CheckCircle2 className="size-4 shrink-0" /> : <AlertTriangle className="size-4 shrink-0" />}
+                  {contaOk
+                    ? "Conta conferida: litros × preço bate com o total."
+                    : "Os valores lidos não conferem. Verifique o comprovante."}
+                </div>
+              )}
+            </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2 space-y-1">
-              <Label>Veículo</Label>
-              <Select value={draft.vehicleId} onValueChange={(v) => setDraft({ ...draft, vehicleId: v })}>
-                <SelectTrigger><SelectValue placeholder="Selecione o veículo" /></SelectTrigger>
-                <SelectContent>
-                  {vehicles.map((v) => <SelectItem key={v.id} value={v.id}>{v.nome} · {v.placa}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label>Data</Label>
-              <Input type="date" value={draft.data} onChange={(e) => setDraft({ ...draft, data: e.target.value })} />
-            </div>
-            <div className="space-y-1">
-              <Label>KM atual</Label>
-              <Input inputMode="numeric" value={draft.km} onChange={(e) => setDraft({ ...draft, km: e.target.value })} placeholder="167.500" />
-            </div>
-            <div className="space-y-1">
-              <Label>Litros</Label>
-              <Input inputMode="decimal" value={draft.litros} onChange={(e) => setDraft({ ...draft, litros: e.target.value })} placeholder="42,5" />
-            </div>
-            <div className="space-y-1">
-              <Label>Valor por litro</Label>
-              <Input inputMode="decimal" value={draft.valorLitro} onChange={(e) => setDraft({ ...draft, valorLitro: e.target.value })} placeholder="5,89" />
-            </div>
-            <div className="space-y-1">
-              <Label>Valor total</Label>
-              <Input inputMode="decimal" value={draft.valorTotal} onChange={(e) => setDraft({ ...draft, valorTotal: e.target.value })} placeholder="250,32" />
-            </div>
-            <div className="space-y-1">
-              <Label>Posto</Label>
-              <Input value={draft.posto} onChange={(e) => setDraft({ ...draft, posto: e.target.value })} />
-            </div>
-            <div className="col-span-2 space-y-1">
-              <Label>Observações</Label>
-              <Textarea rows={2} value={draft.observacoes} onChange={(e) => setDraft({ ...draft, observacoes: e.target.value })} />
+            <div className="space-y-3">
+              {avisos.length > 0 && (
+                <ul className="text-xs rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200 p-2 space-y-1 list-disc pl-5">
+                  {avisos.map((a, i) => <li key={i}>{a}</li>)}
+                </ul>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2 space-y-1">
+                  <Label>Veículo</Label>
+                  <Select value={draft.vehicleId} onValueChange={(v) => setDraft({ ...draft, vehicleId: v })}>
+                    <SelectTrigger className={confClass(conf.placa)}><SelectValue placeholder="Selecione o veículo" /></SelectTrigger>
+                    <SelectContent>
+                      {vehicles.map((v) => <SelectItem key={v.id} value={v.id}>{v.nome} · {v.placa}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <ConfHint c={conf.placa} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Data</Label>
+                  <Input type="date" value={draft.data} onChange={(e) => setDraft({ ...draft, data: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Hora</Label>
+                  <Input type="time" value={draft.hora} onChange={(e) => setDraft({ ...draft, hora: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label>KM do veículo</Label>
+                  <Input inputMode="numeric" className={confClass(conf.quilometragem)} value={draft.km} onChange={(e) => setDraft({ ...draft, km: e.target.value })} placeholder="92.125" />
+                  <ConfHint c={conf.quilometragem} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Combustível</Label>
+                  <Input className={confClass(conf.combustivel)} value={draft.combustivel} onChange={(e) => setDraft({ ...draft, combustivel: e.target.value })} placeholder="Gasolina" />
+                  <ConfHint c={conf.combustivel} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Litros</Label>
+                  <Input inputMode="decimal" className={confClass(conf.litros)} value={draft.litros} onChange={(e) => setDraft({ ...draft, litros: e.target.value })} placeholder="50,039" />
+                  <ConfHint c={conf.litros} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Preço por litro</Label>
+                  <Input inputMode="decimal" className={confClass(conf.preco_litro)} value={draft.valorLitro} onChange={(e) => setDraft({ ...draft, valorLitro: e.target.value })} placeholder="6,99" />
+                  <ConfHint c={conf.preco_litro} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Valor total</Label>
+                  <Input inputMode="decimal" className={confClass(conf.valor_total)} value={draft.valorTotal} onChange={(e) => setDraft({ ...draft, valorTotal: e.target.value })} placeholder="349,77" />
+                  <ConfHint c={conf.valor_total} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Posto</Label>
+                  <Input value={draft.posto} onChange={(e) => setDraft({ ...draft, posto: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label>CNPJ do posto</Label>
+                  <Input value={draft.cnpjPosto} onChange={(e) => setDraft({ ...draft, cnpjPosto: e.target.value })} />
+                </div>
+                <div className="col-span-2 space-y-1">
+                  <Label>Observações</Label>
+                  <Textarea rows={2} value={draft.observacoes} onChange={(e) => setDraft({ ...draft, observacoes: e.target.value })} />
+                </div>
+              </div>
             </div>
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={confirmar}>Confirmar e salvar</Button>
+            <Button onClick={confirmar}>Confirmar lançamento</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
