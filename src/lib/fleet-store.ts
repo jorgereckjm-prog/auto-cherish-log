@@ -99,14 +99,23 @@ export type Fueling = {
   id: string;
   vehicleId: string;
   data: string; // YYYY-MM-DD
+  hora?: string; // HH:MM
   km: number;
   litros: number;
   valorLitro: number;
   valorTotal: number;
+  combustivel?: string;
   posto?: string;
+  cnpjPosto?: string;
   observacoes?: string;
   origem?: "foto" | "manual";
   createdAt?: string;
+  /** auditoria da leitura automática */
+  comprovantePath?: string;
+  lidoEm?: string;
+  lidoPor?: string;
+  dadosIa?: Record<string, unknown>;
+  camposCorrigidos?: string[];
 };
 
 const VEHICLES_KEY = "fleet.vehicles.v1";
